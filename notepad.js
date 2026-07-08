@@ -9,6 +9,8 @@ let _activeOwner = null;    // owner of the active note — id alone is not uniq
 let _autoSaveTimer = null;
 let _handlersReady = false;
 let _dirty = false;         // true when editor has unsaved changes
+let _selectMode = false;    // bulk-select mode for "My Notes" list
+let _selectedIds = new Set(); // ids of selected own notes (owner is always current user)
 
 // ── Username ──────────────────────────────────────────────────────────────────
 function _user() { return window._notepadUsername || null; }
@@ -84,8 +86,12 @@ function _renderReadonlyState(note) {
   if (saveBtn) saveBtn.disabled = !!readonly || !_dirty;
 }
 
+// ── Icons (inline SVG — no emoji) ────────────────────────────────────────────
+const ICON_GLOBE = '<svg class="notepad-icon notepad-icon-inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.7 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.7-3.8-9s1.3-6.4 3.8-9z"/></svg>';
+
 // ── Render lists ──────────────────────────────────────────────────────────────
-function _renderOneList(listEl, notes, emptyMsg) {
+function _renderOneList(listEl, notes, emptyMsg, opts) {
+  opts = opts || {};
   if (!listEl) return;
   if (notes.length === 0) {
     listEl.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:4px 0">' + emptyMsg + '</div>';
@@ -93,6 +99,19 @@ function _renderOneList(listEl, notes, emptyMsg) {
   }
   listEl.innerHTML = '';
   notes.forEach(note => {
+    const row = document.createElement('div');
+    row.className = 'notepad-list-row';
+
+    if (opts.selectable) {
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.className = 'notepad-select-cb';
+      cb.setAttribute('aria-label', 'Select note: ' + (note.title || 'Untitled'));
+      cb.checked = _selectedIds.has(note.id);
+      cb.addEventListener('change', () => _onToggleSelect(note.id, cb.checked));
+      row.appendChild(cb);
+    }
+
     const item = document.createElement('button');
     item.type = 'button';
     const isActive = note.id === _activeId && note.owner === _activeOwner;
@@ -101,7 +120,9 @@ function _renderOneList(listEl, notes, emptyMsg) {
     item.setAttribute('aria-pressed', String(isActive));
 
     const t = document.createElement('span'); t.className = 'notepad-list-title';
-    t.textContent = (note.title || 'Untitled') + (note.visibility === 'shared' ? ' 🌐' : '');
+    t.innerHTML = '';
+    t.append(document.createTextNode(note.title || 'Untitled'));
+    if (note.visibility === 'shared') t.insertAdjacentHTML('beforeend', ' ' + ICON_GLOBE);
 
     const p = document.createElement('span'); p.className = 'notepad-list-preview';
     p.textContent = (note.body || '').replace(/\n/g, ' ').slice(0, 60) || '—';
@@ -113,13 +134,86 @@ function _renderOneList(listEl, notes, emptyMsg) {
 
     item.append(t, p, d);
     item.onclick = () => _openNote(note.id, note.owner);
-    listEl.appendChild(item);
+    row.appendChild(item);
+    listEl.appendChild(row);
   });
 }
 
 function _renderList() {
-  _renderOneList(document.getElementById('notepad-list'), _myNotes(), 'No notes yet. Click + New to create one.');
+  _renderOneList(document.getElementById('notepad-list'), _myNotes(), 'No notes yet. Click + New to create one.', { selectable: _selectMode });
   _renderOneList(document.getElementById('notepad-shared-list'), _sharedNotes(), 'No shared notes from other users yet.');
+  _renderBulkBar();
+}
+
+// ── Bulk select / delete ──────────────────────────────────────────────────────
+function _renderBulkBar() {
+  const bar     = document.getElementById('notepad-bulk-bar');
+  const allCb   = document.getElementById('notepad-select-all-cb');
+  const delBtn  = document.getElementById('notepad-bulk-delete-btn');
+  const countEl = document.getElementById('notepad-bulk-count');
+  const selBtn  = document.getElementById('notepad-select-btn');
+  if (bar) bar.style.display = _selectMode ? '' : 'none';
+  if (selBtn) {
+    selBtn.setAttribute('aria-pressed', String(_selectMode));
+    selBtn.classList.toggle('active', _selectMode);
+    selBtn.textContent = _selectMode ? 'Cancel' : 'Select';
+  }
+  if (!_selectMode) return;
+  const mine = _myNotes();
+  const selectedCount = mine.filter(n => _selectedIds.has(n.id)).length;
+  if (countEl) countEl.textContent = String(selectedCount);
+  if (delBtn) delBtn.disabled = selectedCount === 0;
+  if (allCb) {
+    allCb.checked = mine.length > 0 && selectedCount === mine.length;
+    allCb.indeterminate = selectedCount > 0 && selectedCount < mine.length;
+  }
+}
+
+function _onToggleSelect(id, checked) {
+  if (checked) _selectedIds.add(id); else _selectedIds.delete(id);
+  _renderBulkBar();
+}
+
+function _onToggleSelectMode() {
+  _selectMode = !_selectMode;
+  if (!_selectMode) _selectedIds.clear();
+  _renderList();
+}
+
+function _onSelectAll(checked) {
+  const mine = _myNotes();
+  if (checked) mine.forEach(n => _selectedIds.add(n.id));
+  else _selectedIds.clear();
+  _renderList();
+}
+
+async function _onBulkDelete() {
+  const mine = _myNotes().filter(n => _selectedIds.has(n.id));
+  if (!mine.length) return;
+  if (!confirm('Delete ' + mine.length + ' selected note' + (mine.length > 1 ? 's' : '') + '? This cannot be undone.')) return;
+  const deletedIds = new Set(mine.map(n => n.id));
+  const activeWasDeleted = _activeId && deletedIds.has(_activeId) && _activeOwner === _user();
+  if (activeWasDeleted) {
+    // The active note is being deleted — no point saving it, just stop autosave.
+    clearTimeout(_autoSaveTimer); _autoSaveTimer = null;
+  } else if (_dirty) {
+    // Preserve unsaved edits on the still-active note before deleting others.
+    clearTimeout(_autoSaveTimer); _autoSaveTimer = null;
+    await _doSave();
+  }
+  _setStatus('Deleting…');
+  await Promise.all(mine.map(n => _fsDelete(n.id)));
+  _notes = _notes.filter(n => !(n.owner === _user() && deletedIds.has(n.id)));
+  _selectedIds.clear();
+  _saveCache();
+  if (activeWasDeleted) {
+    const sorted = _myNotes();
+    if (sorted.length) _openNote(sorted[0].id, sorted[0].owner);
+    else _clearEditor();
+  } else {
+    _renderList();
+  }
+  _setStatus('');
 }
 
 // ── Open / clear editor ───────────────────────────────────────────────────────
@@ -210,7 +304,7 @@ async function _doSave() {
   if (btn) btn.disabled = true;
   const ok = await _fsSave(note);
   _setDirty(false);
-  _setStatus(ok ? '✓ Saved to cloud' : '⚠ Saved locally (sync failed)');
+  _setStatus(ok ? 'Saved to cloud' : 'Saved locally (sync failed)');
   // Clear status after 3 s
   setTimeout(() => { if (!_dirty) _setStatus(''); }, 3000);
 }
@@ -237,7 +331,7 @@ async function _onVisibilityChange(e) {
   _renderList();
   _setStatus('Saving…');
   const ok = await _fsSave(note);
-  _setStatus(ok ? (next === 'shared' ? '✓ Made public — everyone can see this' : '✓ Made private') : '⚠ Saved locally (sync failed)');
+  _setStatus(ok ? (next === 'shared' ? 'Made public — everyone can see this' : 'Made private') : 'Saved locally (sync failed)');
   setTimeout(() => { if (!_dirty) _setStatus(''); }, 3000);
 }
 
@@ -282,6 +376,9 @@ function initNotepad() {
     document.getElementById('notepad-visibility-shared') ?.addEventListener('change', _onVisibilityChange);
     document.getElementById('notepad-title')         ?.addEventListener('input', _onInput);
     document.getElementById('notepad-body')          ?.addEventListener('input', _onInput);
+    document.getElementById('notepad-select-btn')      ?.addEventListener('click', _onToggleSelectMode);
+    document.getElementById('notepad-select-all-cb')   ?.addEventListener('change', e => _onSelectAll(e.target.checked));
+    document.getElementById('notepad-bulk-delete-btn') ?.addEventListener('click', _onBulkDelete);
     _handlersReady = true;
   }
   notepadLoad();
