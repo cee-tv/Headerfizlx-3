@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "PDuBbqTDWb1QdJxlFsJN-"
+uri = "file://website_files.zip"
+type = "unspecified"
+title = "Website Files (Complete)"
