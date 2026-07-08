@@ -1169,6 +1169,16 @@ function renderLendingCart() {
       minus.textContent = '-';
       minus.onclick = () => changeLendingQty(idx, -1);
 
+      const qtyInput = document.createElement('input');
+      qtyInput.type = 'number';
+      qtyInput.min = '1';
+      qtyInput.step = '1';
+      qtyInput.className = 'cart-qty-input';
+      qtyInput.style.marginLeft = '8px';
+      qtyInput.value = Number(item.qty);
+      qtyInput.onchange = () => setLendingQty(idx, qtyInput.value);
+      qtyInput.onclick = (e) => e.stopPropagation();
+
       const plus = document.createElement('button');
       plus.className = 'checkout-btn';
       plus.style.marginLeft = '8px';
@@ -1176,6 +1186,7 @@ function renderLendingCart() {
       plus.onclick = () => changeLendingQty(idx, 1);
 
       actions.appendChild(minus);
+      actions.appendChild(qtyInput);
       actions.appendChild(plus);
     }
 
@@ -1225,6 +1236,18 @@ function changeLendingQty(index, delta) {
   if (item.unit && item.unit.toLowerCase() === 'kg') return;
 
   item.qty = Math.max(1, item.qty + delta);
+  item.total = Number((item.qty * item.price).toFixed(2));
+  renderLendingCart();
+}
+
+function setLendingQty(index, value) {
+  const item = lendingCart[index];
+  if (!item) return;
+  if (item.unit && item.unit.toLowerCase() === 'kg') return;
+
+  const n = Number(value);
+  const qty = Number.isFinite(n) ? Math.max(1, Math.floor(n)) : 1;
+  item.qty = qty;
   item.total = Number((item.qty * item.price).toFixed(2));
   renderLendingCart();
 }
@@ -1587,12 +1610,22 @@ function renderCart() {
       minus.textContent = '-';
       minus.onclick = () => changeQty(idx, -1);
 
+      const qtyInput = document.createElement('input');
+      qtyInput.type = 'number';
+      qtyInput.min = '1';
+      qtyInput.step = '1';
+      qtyInput.className = 'cart-qty-input';
+      qtyInput.value = Number(item.qty);
+      qtyInput.onchange = () => setQty(idx, qtyInput.value);
+      qtyInput.onclick = (e) => e.stopPropagation();
+
       const plus = document.createElement('button');
       plus.className = 'checkout-btn';
       plus.textContent = '+';
       plus.onclick = () => changeQty(idx, 1);
 
       actions.appendChild(minus);
+      actions.appendChild(qtyInput);
       actions.appendChild(plus);
     }
 
@@ -1675,6 +1708,20 @@ function changeQty(index, delta) {
   if (item.unit && item.unit.toLowerCase() === 'kg') return;
 
   item.qty = Math.max(1, item.qty + delta);
+  const { total, dealLabel } = calcLineTotal(item.price, item.qty, item.customPrices);
+  item.total = total;
+  item.dealLabel = dealLabel;
+  renderCart();
+}
+
+function setQty(index, value) {
+  const item = cart[index];
+  if (!item) return;
+  if (item.unit && item.unit.toLowerCase() === 'kg') return;
+
+  const n = Number(value);
+  const qty = Number.isFinite(n) ? Math.max(1, Math.floor(n)) : 1;
+  item.qty = qty;
   const { total, dealLabel } = calcLineTotal(item.price, item.qty, item.customPrices);
   item.total = total;
   item.dealLabel = dealLabel;

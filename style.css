@@ -618,6 +618,28 @@ button {
   transform: translateY(0) scale(0.98);
 }
 
+.cart-qty-input.cart-qty-input {
+  width: 48px !important;
+  max-width: 48px !important;
+  padding: 6px 4px !important;
+  height: auto !important;
+  margin-bottom: 0 !important;
+  text-align: center;
+  border: 1px solid var(--border, #ccc) !important;
+  border-radius: var(--radius-sm, 6px);
+  background: var(--card, #fff);
+  color: var(--text, inherit);
+  font-family: inherit;
+  font-size: 14px !important;
+  -moz-appearance: textfield;
+}
+
+.cart-qty-input::-webkit-outer-spin-button,
+.cart-qty-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 .checkout-btn.disabled {
   background: var(--muted);
   cursor: not-allowed;
@@ -656,9 +678,9 @@ textarea:focus {
 
 
 
-.container input:not([type="checkbox"]):not([type="radio"]),
+.container input:not([type="checkbox"]):not([type="radio"]):not(.cart-qty-input),
 .container select,
-.modal input:not([type="checkbox"]):not([type="radio"]),
+.modal input:not([type="checkbox"]):not([type="radio"]):not(.cart-qty-input),
 .modal select,
 .product-edit-inputs input,
 .product-edit-inputs select {
@@ -3307,11 +3329,11 @@ html, body {
     font-size: 18px !important;
   }
 
-  .container input:not([type="checkbox"]):not([type="radio"]),
+  .container input:not([type="checkbox"]):not([type="radio"]):not(.cart-qty-input),
   .container select,
   input[type="text"],
   input[type="password"],
-  input[type="number"],
+  input[type="number"]:not(.cart-qty-input),
   input[type="date"],
   input[type="search"],
   select,
