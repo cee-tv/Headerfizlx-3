@@ -66,11 +66,13 @@ window.notepadFsSave = async function(username, note) {
 };
 
 window.notepadFsDelete = async function(username, noteId) {
-  if (!username || !noteId) return;
+  if (!username || !noteId) return false;
   try {
     await deleteDoc(doc(db, 'notes', username + '_' + noteId));
+    return true;
   } catch (e) {
     console.warn('Notepad delete failed:', e);
+    return false;
   }
 };
 

@@ -234,6 +234,16 @@
   transition: background 0.12s;
   border: 1px solid transparent;
   margin-bottom: 6px;
+  /* These rows are rendered as <button> elements — reset the browser's
+     default button chrome so they inherit the card's (dark-mode-aware)
+     background instead of showing a light system button face. */
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  width: 100%;
 }
 .notepad-list-item:hover {
   background: var(--sidebar-hover-bg);
@@ -276,4 +286,15 @@
 @media (max-width: 480px) {
   .notepad-body { min-height: 200px; }
   .notepad-toolbar { gap: 8px; }
+
+  /* Icons were rendering oversized relative to the shrunken mobile buttons —
+     scale them down to match. */
+  .notepad-icon {
+    width: 13px;
+    height: 13px;
+  }
+  .notepad-icon-inline {
+    width: 11px;
+    height: 11px;
+  }
 }

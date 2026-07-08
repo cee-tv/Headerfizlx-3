@@ -3,6 +3,7 @@
 // localStorage is a per-user cache — shown instantly on open, then merged.
 
 const NOTEPAD_CACHE_PREFIX = 'alipante_notepad_v2_';
+const NOTEPAD_TOMB_PREFIX  = 'alipante_notepad_tomb_v1_';
 let _notes = [];            // working set
 let _activeId = null;
 let _activeOwner = null;    // owner of the active note — id alone is not unique across users
@@ -19,6 +20,35 @@ function _user() { return window._notepadUsername || null; }
 function _cacheKey() { return NOTEPAD_CACHE_PREFIX + (_user() || 'guest'); }
 function _saveCache()  { try { localStorage.setItem(_cacheKey(), JSON.stringify(_notes)); } catch(_){} }
 function _loadCache()  { try { return JSON.parse(localStorage.getItem(_cacheKey()) || '[]'); } catch(_){ return []; } }
+
+// ── Deletion tombstones ───────────────────────────────────────────────────────
+// Deleting a note only removes it locally + fires a remote delete. If the
+// remote delete fails (offline, race with a slow load, etc.) the next sync
+// would otherwise resurrect the note because it still exists on the server.
+// Tombstones remember "this id was deleted at time T" so a stale remote copy
+// (updatedAt <= T) never reappears, and we retry the remote delete on load.
+function _tombKey() { return NOTEPAD_TOMB_PREFIX + (_user() || 'guest'); }
+function _loadTombs() { try { return JSON.parse(localStorage.getItem(_tombKey()) || '{}'); } catch(_){ return {}; } }
+function _saveTombs(t) { try { localStorage.setItem(_tombKey(), JSON.stringify(t)); } catch(_){} }
+function _markTombstone(id) {
+  const tombs = _loadTombs();
+  tombs[id] = Date.now();
+  _saveTombs(tombs);
+}
+// Best-effort retry of any deletes that may not have reached the server yet,
+// then drop tombstones once they are older than the retention window.
+const _TOMB_RETENTION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+async function _flushTombstones() {
+  const tombs = _loadTombs();
+  const ids = Object.keys(tombs);
+  if (!ids.length) return tombs;
+  const now = Date.now();
+  await Promise.all(ids.map(id => _fsDelete(id).catch(() => {})));
+  const kept = {};
+  for (const id of ids) { if (now - tombs[id] < _TOMB_RETENTION_MS) kept[id] = tombs[id]; }
+  _saveTombs(kept);
+  return kept;
+}
 
 // ── Firestore via app.js helpers ──────────────────────────────────────────────
 async function _fsLoad()         { return window.notepadFsLoad  ? window.notepadFsLoad(_user())         : null; }
@@ -40,11 +70,16 @@ function _setDirty(val) {
   if (btn) btn.disabled = !val || (active && !_isMine(active));
 }
 
-// Merge remote array into local: newest updatedAt wins per (owner, id)
-function _merge(remote) {
+// Merge remote array into local: newest updatedAt wins per (owner, id).
+// Own notes that were deleted (tombstoned) after the remote's updatedAt are
+// dropped instead of being resurrected by a stale/failed-delete remote copy.
+function _merge(remote, tombs) {
+  tombs = tombs || {};
   const key = n => (n.owner || _user()) + '::' + n.id;
   const map = new Map(_notes.map(n => [key(n), { ...n }]));
   for (const r of remote) {
+    const deletedAt = r.owner === _user() ? tombs[r.id] : undefined;
+    if (deletedAt && deletedAt >= (r.updatedAt || 0)) continue; // deleted after this version — skip
     const local = map.get(key(r));
     if (!local || r.updatedAt > (local.updatedAt || 0)) map.set(key(r), r);
   }
@@ -202,6 +237,7 @@ async function _onBulkDelete() {
     await _doSave();
   }
   _setStatus('Deleting…');
+  mine.forEach(n => _markTombstone(n.id));
   await Promise.all(mine.map(n => _fsDelete(n.id)));
   _notes = _notes.filter(n => !(n.owner === _user() && deletedIds.has(n.id)));
   _selectedIds.clear();
@@ -272,9 +308,9 @@ async function notepadLoad() {
   if (!_user()) { _setStatus('Not logged in'); return; }
 
   _setStatus('Syncing…');
-  const remote = await _fsLoad();
+  const [remote, tombs] = await Promise.all([_fsLoad(), _flushTombstones()]);
   if (remote !== null) {
-    _notes = _merge(remote);
+    _notes = _merge(remote, tombs);
     _saveCache();
     _renderList();
     // Refresh editor if content changed from remote
@@ -311,6 +347,17 @@ async function _doSave() {
 
 // ── Event handlers ────────────────────────────────────────────────────────────
 function _onInput() {
+  // If nothing is active yet (e.g. very first note — the editor is usable
+  // before any note exists), create a note on the fly so typing + Save works.
+  if (!_activeId) {
+    const id = 'note_' + Date.now();
+    const note = { id, owner: _user(), title: '', body: '', visibility: 'private', updatedAt: Date.now() };
+    _notes.unshift(note);
+    _activeId = id;
+    _activeOwner = note.owner;
+    _renderVisibilityBtn(note);
+    _renderReadonlyState(note);
+  }
   const active = _activeNote();
   if (active && !_isMine(active)) return; // read-only shared note
   _setDirty(true);
@@ -357,6 +404,7 @@ async function _onDelete() {
   clearTimeout(_autoSaveTimer); _autoSaveTimer = null;
   const deletedId = _activeId;
   const deletedOwner = _activeOwner;
+  _markTombstone(deletedId);
   _notes = _notes.filter(n => !(n.id === deletedId && n.owner === deletedOwner));
   _saveCache();
   _setStatus('Deleting…');
