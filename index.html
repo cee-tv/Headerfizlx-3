@@ -12,7 +12,6 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="notepad.css">
   <link rel="icon" type="image/png" href="favicon.png">
 </head>
 
@@ -87,9 +86,6 @@
       </button>
       <button class="sidebar-link" onclick="showPage('icePage')" data-page="icePage">
         <span class="sicon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/><line x1="19.07" y1="4.93" x2="4.93" y2="19.07"/></svg></span><span class="slabel">Ice Sales</span>
-      </button>
-      <button class="sidebar-link" onclick="showPage('notepadPage')" data-page="notepadPage">
-        <span class="sicon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></span><span class="slabel">Notepad</span>
       </button>
       <button class="sidebar-link" onclick="showPage('adminPage')" data-page="adminPage">
         <span class="sicon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span><span class="slabel">Admin</span>
@@ -496,56 +492,6 @@
       <div class="card">
         <h4 style="margin:0 0 12px;font-size:15px;font-weight:700">Transactions</h4>
         <div id="ice-history">Loading...</div>
-      </div>
-    </div>
-
-    <div id="notepadPage" class="page" style="display:none">
-      <h3 style="margin:0 0 16px">Notepad</h3>
-
-      <div class="card notepad-card">
-        <div class="notepad-toolbar">
-          <input id="notepad-title" type="text" placeholder="Note title…" class="notepad-title-input" aria-label="Note title" />
-          <div class="notepad-toolbar-actions">
-            <button id="notepad-new-btn" class="quick-btn">+ New</button>
-            <button id="notepad-select-btn" class="quick-btn notepad-select-btn" type="button" aria-pressed="false">Select</button>
-            <button id="notepad-delete-btn" class="remove-btn notepad-del-btn">Delete</button>
-          </div>
-        </div>
-        <div id="notepad-visibility-group" class="notepad-visibility-group" role="radiogroup" aria-label="Note visibility">
-          <label class="notepad-visibility-option">
-            <input type="radio" name="notepad-visibility" id="notepad-visibility-private" value="private" checked />
-            <span class="notepad-icon-label"><svg class="notepad-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Private (only me)</span>
-          </label>
-          <label class="notepad-visibility-option">
-            <input type="radio" name="notepad-visibility" id="notepad-visibility-shared" value="shared" />
-            <span class="notepad-icon-label"><svg class="notepad-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.7 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.7-3.8-9s1.3-6.4 3.8-9z"/></svg>Public (everyone)</span>
-          </label>
-        </div>
-        <textarea id="notepad-body" class="notepad-body" placeholder="Start writing…" aria-label="Note body"></textarea>
-        <div id="notepad-readonly-banner" class="notepad-readonly-banner" style="display:none">Viewing a shared note — only <span id="notepad-readonly-owner"></span> can edit this.</div>
-        <div class="notepad-footer">
-          <span id="notepad-save-status" class="notepad-save-status" aria-live="polite"></span>
-          <button id="notepad-save-btn" class="checkout-btn notepad-save-btn notepad-icon-label">
-            <svg class="notepad-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>
-            Save
-          </button>
-        </div>
-      </div>
-
-      <div class="card notepad-list-card">
-        <div class="notepad-list-heading">
-          <h4 style="margin:0;font-size:14px;font-weight:700;color:var(--muted)">My Notes</h4>
-          <div id="notepad-bulk-bar" class="notepad-bulk-bar" style="display:none">
-            <label class="notepad-select-all">
-              <input type="checkbox" id="notepad-select-all-cb" />
-              Select all
-            </label>
-            <button id="notepad-bulk-delete-btn" class="remove-btn notepad-bulk-delete-btn" type="button" disabled>Delete selected (<span id="notepad-bulk-count">0</span>)</button>
-          </div>
-        </div>
-        <div id="notepad-list"></div>
-        <h4 style="margin:16px 0 10px;font-size:14px;font-weight:700;color:var(--muted)">Shared With Everyone</h4>
-        <div id="notepad-shared-list"></div>
       </div>
     </div>
 
@@ -1018,7 +964,6 @@
     </div>
   </div>
   <script type="module" src="app.js"></script>
-  <script src="notepad.js"></script>
   <script>
 if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {

@@ -16,66 +16,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// ── Notepad Firestore helpers (called by notepad.js) ─────────────────────────
-// Notes can be 'private' (only the owner sees them) or 'shared' (everyone sees them).
-function _notepadDocToNote(d) {
-  const r = d.data();
-  return {
-    id:         r.noteId,
-    owner:      r.username,
-    title:      r.title || '',
-    body:       r.body  || '',
-    visibility: r.visibility === 'shared' ? 'shared' : 'private',
-    updatedAt:  r.updatedAt?.toMillis ? r.updatedAt.toMillis() : (r.updatedAt || 0)
-  };
-}
-
-window.notepadFsLoad = async function(username) {
-  if (!username) return null;
-  try {
-    const ownQ = query(collection(db, 'notes'), where('username', '==', username));
-    const sharedQ = query(collection(db, 'notes'), where('visibility', '==', 'shared'));
-    const [ownSnap, sharedSnap] = await Promise.all([getDocs(ownQ), getDocs(sharedQ)]);
-    const byDocId = new Map();
-    ownSnap.docs.forEach(d => byDocId.set(d.id, _notepadDocToNote(d)));
-    sharedSnap.docs.forEach(d => byDocId.set(d.id, _notepadDocToNote(d)));
-    return [...byDocId.values()];
-  } catch (e) {
-    console.warn('Notepad load failed:', e);
-    return null;
-  }
-};
-
-window.notepadFsSave = async function(username, note) {
-  if (!username || !note?.id) return false;
-  try {
-    const docId = username + '_' + note.id;
-    await setDoc(doc(db, 'notes', docId), {
-      username:   username,
-      noteId:     note.id,
-      title:      note.title || '',
-      body:       note.body  || '',
-      visibility: note.visibility === 'shared' ? 'shared' : 'private',
-      updatedAt:  serverTimestamp()
-    }, { merge: true });
-    return true;
-  } catch (e) {
-    console.warn('Notepad save failed:', e);
-    return false;
-  }
-};
-
-window.notepadFsDelete = async function(username, noteId) {
-  if (!username || !noteId) return false;
-  try {
-    await deleteDoc(doc(db, 'notes', username + '_' + noteId));
-    return true;
-  } catch (e) {
-    console.warn('Notepad delete failed:', e);
-    return false;
-  }
-};
-
 const mojibakeMarkerPattern = /[ÃÂâð]/;
 
 function sanitizeMojibakeString(value) {
@@ -1789,7 +1729,7 @@ function isPageAllowedForRole(id) {
 
   if (currentUserRole === 'admin') return true;
 
-  if (currentUserRole === 'cashier') return id === 'salesPage' || id === 'receiptsPage' || id === 'cashierPage' || id === 'eloadingPage' || id === 'icePage' || id === 'lendingPage' || id === 'notepadPage';
+  if (currentUserRole === 'cashier') return id === 'salesPage' || id === 'receiptsPage' || id === 'cashierPage' || id === 'eloadingPage' || id === 'icePage' || id === 'lendingPage';
 
   if (id === 'financePage' || id === 'remitsPage' || id === 'profitsPage') return currentUserRole === 'admin';
   return false;
@@ -1828,7 +1768,7 @@ function showPage(id) {
   // Topbar page name
   const topbarPageName = document.getElementById('topbar-page-name');
   if (topbarPageName) {
-    const pageLabels = { salesPage: 'Sales', receiptsPage: 'Receipts', cashierPage: 'Cashier', productsPage: 'Stocks', lendingPage: 'Lending', financePage: 'Finance', remitsPage: 'Remits', profitsPage: 'Profits', adminPage: 'Admin', eloadingPage: 'eLoading', icePage: 'Ice Sales', notepadPage: 'Notepad' };
+    const pageLabels = { salesPage: 'Sales', receiptsPage: 'Receipts', cashierPage: 'Cashier', productsPage: 'Stocks', lendingPage: 'Lending', financePage: 'Finance', remitsPage: 'Remits', profitsPage: 'Profits', adminPage: 'Admin', eloadingPage: 'eLoading', icePage: 'Ice Sales' };
     topbarPageName.textContent = pageLabels[id] || id.replace('Page', '');
   }
 
@@ -1874,7 +1814,6 @@ function showPage(id) {
   }
   if (id === 'eloadingPage') loadEloadingPage();
   if (id === 'icePage') loadIcePage();
-  if (id === 'notepadPage') { try { if (typeof initNotepad === 'function') initNotepad(); } catch(e) { console.error('initNotepad failed', e); } }
 }
 
 
@@ -4448,7 +4387,7 @@ function updateNavAccess() {
   document.querySelectorAll('.sidebar-link').forEach(b => {
     const pageId = b.getAttribute('data-page');
     if (currentUserRole === 'cashier') {
-      const allowed = ['salesPage', 'receiptsPage', 'cashierPage', 'eloadingPage', 'icePage', 'lendingPage', 'notepadPage'];
+      const allowed = ['salesPage', 'receiptsPage', 'cashierPage', 'eloadingPage', 'icePage', 'lendingPage'];
       b.style.display = allowed.includes(pageId) ? '' : 'none';
     } else if (currentUserRole === 'admin') {
       const hiddenForAdmin = ['cashierPage', 'remitsPage', 'profitsPage'];
@@ -4584,7 +4523,6 @@ async function tryRestoreSession() {
       currentUserRole = obj.role;
       currentUsername = obj.username || null;
       currentEmployeeName = obj.role === 'admin' ? 'CEO' : (obj.employeeName || null);
-      window._notepadUsername = currentUsername;
       updateNavAccess();
 
       // Restore active shift so checkout works without re-logging in
@@ -4603,7 +4541,7 @@ async function tryRestoreSession() {
 
 
 const logoutBtn = document.getElementById('logout-btn');
-if (logoutBtn) logoutBtn.onclick = () => { currentUserRole = null; currentUsername = null; currentEmployeeName = null; window._notepadUsername = null; updateNavAccess(); clearSession(); showLogin(); };
+if (logoutBtn) logoutBtn.onclick = () => { currentUserRole = null; currentUsername = null; currentEmployeeName = null; updateNavAccess(); clearSession(); showLogin(); };
 
 const loginBtn = document.getElementById('login-btn');
 if (loginBtn) loginBtn.onclick = async () => {
@@ -4634,7 +4572,6 @@ if (loginBtn) loginBtn.onclick = async () => {
       currentUserRole = userRole;
       currentUsername = u.username || username;
       currentEmployeeName = userRole === 'admin' ? 'CEO' : (u.employeeName || u.username || username);
-      window._notepadUsername = currentUsername;
       updateNavAccess();
 
       // Re-run initShift now that role/name are set so cashiers get their own shift.
