@@ -1,0 +1,2 @@
+- [Shallow-clone push failures](shallow-clone-git-push.md) — "did not receive expected object" on push means local repo is a shallow clone with an unfetchable root parent; squash to an orphan commit and force-push instead of trying to unshallow.
+- [Never grep/print raw env secrets in shell](secret-exposure-shell.md) — `env | grep -i <name>` echoes full secret values into tool output; always redact before printing when debugging credentials.
