@@ -2401,51 +2401,37 @@ async function loadSalesSummary() {
     return;
   }
 
-  const q = query(collection(db, 'sales'), where('shiftId', '==', currentShift.id));
+  const todayKey = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
+  const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+  const todayEnd = new Date(); todayEnd.setHours(23, 59, 59, 999);
+
+  const q = query(
+    collection(db, 'sales'),
+    where('shiftId', '==', currentShift.id),
+    where('timestamp', '>=', todayStart),
+    where('timestamp', '<=', todayEnd)
+  );
   const qSnap = await getDocs(q);
 
-  // Group sales by date (YYYY-MM-DD)
-  const byDate = {};
+  const itemsSummary = {};
   qSnap.forEach(docSnap => {
     const s = docSnap.data();
     totalIncome += Number(s.total || 0);
-    const ts = s.timestamp && s.timestamp.toDate ? s.timestamp.toDate() : (s.timestamp ? new Date(s.timestamp) : new Date());
-    const dateKey = ts.toLocaleDateString('en-CA'); // YYYY-MM-DD for sorting
-    const dateLabel = ts.toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
-    if (!byDate[dateKey]) byDate[dateKey] = { label: dateLabel, items: {} };
     (s.items || []).forEach(it => {
       const key = `${it.name}||${it.unit}`;
-      if (!byDate[dateKey].items[key]) byDate[dateKey].items[key] = { name: it.name, unit: it.unit, weight: 0, qty: 0 };
+      if (!itemsSummary[key]) itemsSummary[key] = { name: it.name, unit: it.unit, weight: 0, qty: 0 };
       if (it.unit && it.unit.toLowerCase() === 'kg') {
-        byDate[dateKey].items[key].weight += Number(it.weight || 0);
+        itemsSummary[key].weight += Number(it.weight || 0);
       } else {
-        byDate[dateKey].items[key].qty += Number(it.qty || 0);
+        itemsSummary[key].qty += Number(it.qty || 0);
       }
     });
   });
 
-  if (currentShift && Number(currentShift.totalIncome || 0) !== Number(totalIncome.toFixed(2))) {
-    currentShift.totalIncome = Number(totalIncome.toFixed(2));
-  }
-
   const tbody = document.getElementById('items-sold-tbody');
   tbody.innerHTML = '';
 
-  const sortedDates = Object.keys(byDate).sort();
-  sortedDates.forEach(dateKey => {
-    const group = byDate[dateKey];
-
-    // Date separator row
-    const sepTr = document.createElement('tr');
-    const sepTd = document.createElement('td');
-    sepTd.colSpan = 3;
-    sepTd.style.cssText = 'background:var(--primary,#3498db);color:#fff;font-weight:700;font-size:12px;padding:4px 8px;text-align:center;letter-spacing:0.03em;';
-    sepTd.innerText = group.label;
-    sepTr.appendChild(sepTd);
-    tbody.appendChild(sepTr);
-
-    // Item rows for this date
-    Object.values(group.items).forEach(entry => {
+  Object.values(itemsSummary).forEach(entry => {
       const tr = document.createElement('tr');
       const nameTd = document.createElement('td');
       const unitTd = document.createElement('td');
@@ -2463,7 +2449,6 @@ async function loadSalesSummary() {
       tr.appendChild(unitTd);
       tr.appendChild(soldTd);
       tbody.appendChild(tr);
-    });
   });
 
   document.getElementById('total-income').innerText = formatCurrency(totalIncome);
