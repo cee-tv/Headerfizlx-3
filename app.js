@@ -4903,43 +4903,50 @@ function renderCustomerViewProducts() {
 }
 
 function buildCvCard(p) {
+  const cat = _cvCategories.find(c => c.name === p.category);
+  const accentColor = (cat && cat.color) ? cat.color : 'var(--primary)';
+
   const card = document.createElement('div');
   card.className = 'cv-card';
+  card.style.setProperty('--cv-accent', accentColor);
 
-  const cat = _cvCategories.find(c => c.name === p.category);
-  if (p.category) {
-    const badge = document.createElement('div');
-    badge.className = 'cv-cat-badge';
-    if (cat && cat.color) badge.style.background = cat.color;
-    badge.textContent = p.category;
-    card.appendChild(badge);
-  }
+  // Left: name + unit + deals
+  const info = document.createElement('div');
+  info.className = 'cv-info';
 
   const name = document.createElement('div');
   name.className = 'cv-name';
   name.textContent = p.name;
-  card.appendChild(name);
-
-  const price = document.createElement('div');
-  price.className = 'cv-price';
-  price.textContent = formatCurrency(p.price);
-  card.appendChild(price);
+  info.appendChild(name);
 
   const unit = document.createElement('div');
   unit.className = 'cv-unit';
   unit.textContent = 'per ' + (p.unit || 'pc');
-  card.appendChild(unit);
+  info.appendChild(unit);
 
-  // Show deal prices if any
   if (p.customPrices && p.customPrices.length) {
+    const deals = document.createElement('div');
+    deals.className = 'cv-deals';
     p.customPrices.forEach(cp => {
-      const deal = document.createElement('div');
-      deal.className = 'cv-unit';
-      deal.style.color = 'var(--primary)';
+      const deal = document.createElement('span');
+      deal.className = 'cv-deal-tag';
       deal.textContent = `${cp.qty} pcs → ${formatCurrency(cp.price)}`;
-      card.appendChild(deal);
+      deals.appendChild(deal);
     });
+    info.appendChild(deals);
   }
+
+  // Right: price
+  const priceWrap = document.createElement('div');
+  priceWrap.className = 'cv-price-wrap';
+
+  const price = document.createElement('div');
+  price.className = 'cv-price';
+  price.textContent = formatCurrency(p.price);
+  priceWrap.appendChild(price);
+
+  card.appendChild(info);
+  card.appendChild(priceWrap);
 
   return card;
 }
