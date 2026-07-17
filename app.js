@@ -4910,7 +4910,12 @@ function buildCvCard(p) {
   card.className = 'cv-card';
   card.style.setProperty('--cv-accent', accentColor);
 
-  // Left: name + unit + deals
+  // Colored accent bar at the top
+  const accent = document.createElement('div');
+  accent.className = 'cv-card-accent';
+  card.appendChild(accent);
+
+  // Info section: name + unit + deals
   const info = document.createElement('div');
   info.className = 'cv-info';
 
@@ -4936,16 +4941,15 @@ function buildCvCard(p) {
     info.appendChild(deals);
   }
 
-  // Right: price
+  card.appendChild(info);
+
+  // Price at the bottom
   const priceWrap = document.createElement('div');
   priceWrap.className = 'cv-price-wrap';
-
   const price = document.createElement('div');
   price.className = 'cv-price';
   price.textContent = formatCurrency(p.price);
   priceWrap.appendChild(price);
-
-  card.appendChild(info);
   card.appendChild(priceWrap);
 
   return card;
