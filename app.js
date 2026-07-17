@@ -1095,6 +1095,7 @@ function renderLendingProducts() {
     if (!isOut && !isVeryLow && !isLow && categoryInfo && categoryInfo.color) {
       btn.style.background = categoryInfo.color;
     } else if (!isOut && !isVeryLow && !isLow) {
+      btn.classList.add('btn-ok-stock');
       const cat = (p.category || '').toLowerCase().trim();
       if (cat === 'vegetables') btn.classList.add('category-vegetables');
       else if (cat === 'frozen foods') btn.classList.add('category-frozen-foods');
@@ -1452,7 +1453,7 @@ function renderProducts() {
     if (!isOut && !isVeryLow && !isLow && categoryInfo && categoryInfo.color) {
       btn.style.background = categoryInfo.color;
     } else if (!isOut && !isVeryLow && !isLow) {
-
+      btn.classList.add('btn-ok-stock');
       const cat = (p.category || '').toLowerCase().trim();
       if (cat === 'vegetables') btn.classList.add('category-vegetables');
       else if (cat === 'frozen foods') btn.classList.add('category-frozen-foods');

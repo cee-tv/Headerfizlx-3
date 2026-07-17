@@ -4167,6 +4167,14 @@ body.sidebar-collapsed .topbar {
 }
 
 /* ---- Stock warning on product buttons ---- */
+.btn-ok-stock {
+  background: linear-gradient(135deg, #166534, #15803d) !important;
+  color: #fff !important;
+  border: 2px solid #22c55e !important;
+}
+.btn-ok-stock:hover {
+  background: linear-gradient(135deg, #15803d, #16a34a) !important;
+}
 .btn-low-stock {
   background: linear-gradient(135deg, #854d0e, #a16207) !important;
   color: #fff !important;
