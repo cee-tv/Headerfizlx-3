@@ -246,6 +246,8 @@ const searchState = {
   stocks: ""
 };
 
+let currentStockCategory = 'All';
+
 const historyFilters = { startDate: null, endDate: null, cashier: 'all' };
 
 
@@ -417,21 +419,38 @@ function renderCategoriesManagement() {
     return;
   }
 
+  // "All" chip to reset filter
+  const allChip = document.createElement('span');
+  allChip.className = 'category-btn cat-manage-chip' + (currentStockCategory === 'All' ? ' cat-manage-active' : '');
+  allChip.style.cursor = 'pointer';
+  allChip.innerHTML = `All`;
+  allChip.onclick = () => {
+    currentStockCategory = 'All';
+    renderCategoriesManagement();
+    renderProductsEditor();
+  };
+  div.appendChild(allChip);
+
   categories.forEach(c => {
     const chip = document.createElement('span');
-    chip.className = 'category-btn';
+    const isActive = currentStockCategory === c.name;
+    chip.className = 'category-btn cat-manage-chip' + (isActive ? ' cat-manage-active' : '');
     if (c.color) {
       chip.style.background = c.color;
       chip.style.borderColor = c.color;
     }
-    chip.style.cursor = isColorMode ? 'pointer' : 'default';
-    chip.innerHTML = `${c.name} <button class="delete-cat" onclick="deleteCategory('${c.id}')"></button>`;
-    if (isColorMode) {
-      chip.onclick = (e) => {
-        if (e.target.classList.contains('delete-cat')) return;
+    chip.style.cursor = 'pointer';
+    chip.innerHTML = `${c.name} <button class="delete-cat" onclick="deleteCategory('${c.id}')">✕</button>`;
+    chip.onclick = (e) => {
+      if (e.target.classList.contains('delete-cat')) return;
+      if (isColorMode) {
         cycleCategoryColor(c.id);
-      };
-    }
+        return;
+      }
+      currentStockCategory = isActive ? 'All' : c.name;
+      renderCategoriesManagement();
+      renderProductsEditor();
+    };
     div.appendChild(chip);
   });
 }
@@ -3240,20 +3259,24 @@ function renderProductsEditor() {
   container.innerHTML = '';
 
   const qSearch = cleanStr(searchState.stocks);
-  let displayed;
+  let displayed = products;
+
+  if (currentStockCategory !== 'All') {
+    displayed = displayed.filter(p => (p.category || 'Uncategorized') === currentStockCategory);
+  }
   if (qSearch) {
-    displayed = products.filter(p =>
+    displayed = displayed.filter(p =>
       cleanStr(p.name).includes(qSearch) ||
       cleanStr(p.category).includes(qSearch)
     );
-  } else {
-    displayed = products;
   }
+
   renderEditorGroups(container, displayed);
   const countEl = document.getElementById('total-products-count');
   if (countEl) {
-    countEl.textContent = qSearch
-      ? displayed.length + ' of ' + products.length + ' products'
+    const suffix = currentStockCategory !== 'All' ? ' in "' + currentStockCategory + '"' : '';
+    countEl.textContent = (qSearch || currentStockCategory !== 'All')
+      ? displayed.length + ' of ' + products.length + ' products' + suffix
       : 'Total: ' + products.length + ' product' + (products.length !== 1 ? 's' : '');
   }
 }

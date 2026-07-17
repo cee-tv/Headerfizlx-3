@@ -1477,6 +1477,19 @@ input[type="number"] {
   gap: 8px;
   margin-bottom: 16px;
 }
+.cat-manage-chip {
+  cursor: pointer !important;
+  user-select: none;
+}
+.cat-manage-chip:hover {
+  opacity: 0.85;
+  transform: translateY(-1px);
+}
+.cat-manage-active {
+  outline: 2px solid var(--primary) !important;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(var(--primary-rgb, 0,82,212), 0.15) !important;
+}
 
 .category-btn {
   padding: 4px 10px;
