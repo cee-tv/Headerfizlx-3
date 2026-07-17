@@ -5431,6 +5431,7 @@ async function processPayment(borrowerName, amount, isFull, selectedItems = []) 
 
     let totalPaid = 0;
     const updates = [];
+    let originalLendingTimestamp = null; // use lending date, not payment date
 
     for (const docSnap of qSnap.docs) {
       const l = docSnap.data();
@@ -5438,9 +5439,15 @@ async function processPayment(borrowerName, amount, isFull, selectedItems = []) 
       const unpaid = Number(l.total || 0) - paid;
 
       if (unpaid > 0) {
+        // Grab the earliest lending timestamp so the sale is dated to when items were taken
+        const lts = l.timestamp && l.timestamp.toDate ? l.timestamp.toDate() : (l.timestamp ? new Date(l.timestamp) : null);
+        if (lts && (!originalLendingTimestamp || lts < originalLendingTimestamp)) {
+          originalLendingTimestamp = lts;
+        }
+
         const paymentRecord = {
           amount: isFull ? unpaid : amount,
-          timestamp: new Date(),
+          timestamp: new Date(), // actual payment time (for audit trail)
           shiftId: currentShift.id,
           cashier: currentEmployeeName || currentUsername || 'Unknown'
         };
@@ -5483,8 +5490,11 @@ async function processPayment(borrowerName, amount, isFull, selectedItems = []) 
     }
 
 
+    // Use the original lending date so the payment income falls on the day items were taken,
+    // not the day cash was collected — prevents it from showing up in a different day's totals.
+    const saleTimestamp = originalLendingTimestamp || new Date();
     const saleDoc = {
-      timestamp: new Date(),
+      timestamp: saleTimestamp,
       shiftId: currentShift.id,
       items: [{ name: `Lending Payment - ${borrowerName}`, unit: 'pcs', price: amount, qty: 1, lineTotal: amount }],
       subtotal: amount,
@@ -5492,7 +5502,9 @@ async function processPayment(borrowerName, amount, isFull, selectedItems = []) 
       total: amount,
       cash: amount,
       change: 0,
-      cashier: currentEmployeeName || currentUsername || 'Unknown'
+      cashier: currentEmployeeName || currentUsername || 'Unknown',
+      lendingPayment: true,
+      lendingPaymentDate: new Date() // actual payment date kept for reference
     };
     await safeWrite('add', 'sales', saleDoc);
 
