@@ -5575,6 +5575,20 @@ body.sidebar-collapsed .topbar {
   color: var(--muted);
   white-space: nowrap;
 }
+.note-copy-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted);
+  padding: 2px 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  opacity: 0.6;
+  transition: opacity var(--transition-fast), color var(--transition-fast);
+}
+.note-copy-btn:hover { opacity: 1; color: var(--primary); }
+.note-copy-btn--copied { opacity: 1; color: #16a34a; }
 .note-delete-btn {
   background: none;
   border: none;
