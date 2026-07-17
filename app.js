@@ -4206,15 +4206,28 @@ async function exportPriceListDocx(sorted) {
 
 const clearSalesBtn = document.getElementById('clear-sales');
 if (clearSalesBtn) clearSalesBtn.onclick = async () => {
-  const confirmText = prompt("Type DELETE to confirm clearing all sales");
+  const confirmText = prompt("Type DELETE to confirm clearing all sales, eLoading, and Ice Sales records");
   if (confirmText !== 'DELETE') return alert('Delete cancelled');
-  const qSnap = await getDocs(collection(db, 'sales'));
-  for (const s of qSnap.docs) {
-    await deleteDoc(doc(db, 'sales', s.id));
-  }
-  alert('All sales cleared');
+
+  const [salesSnap, eloadSnap, iceSnap] = await Promise.all([
+    getDocs(collection(db, 'sales')),
+    getDocs(collection(db, 'eloading')),
+    getDocs(collection(db, 'icesales')),
+  ]);
+
+  const deletions = [
+    ...salesSnap.docs.map(s => deleteDoc(doc(db, 'sales', s.id))),
+    ...eloadSnap.docs.map(s => deleteDoc(doc(db, 'eloading', s.id))),
+    ...iceSnap.docs.map(s => deleteDoc(doc(db, 'icesales', s.id))),
+  ];
+  await Promise.all(deletions);
+
+  alert('All sales, eLoading, and Ice Sales records cleared');
   loadSalesSummary();
   loadSalesHistory();
+  // Reload eloading and ice pages if currently visible
+  if (document.getElementById('eloadingPage')?.style.display !== 'none') loadEloadingPage();
+  if (document.getElementById('icePage')?.style.display !== 'none') loadIcePage();
 };
 
 
