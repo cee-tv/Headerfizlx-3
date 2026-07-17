@@ -921,21 +921,61 @@ function renderAlertsUI() {
       const div = document.createElement('div');
       div.className = 'notification-item';
       if (item.type === 'expiring-soon') div.classList.add('notification-item-warn');
-      div.style.cursor = 'pointer';
-      div.title = 'Click to edit ' + p.name;
+
+      // Build "Add Reminder" button for expiry items
+      let reminderBtn = '';
+      if (item.date) {
+        // Format date as YYYYMMDD for Google Calendar (all-day event)
+        const dateParts = item.date.replace(/-/g, '');
+        const nextDay = (() => {
+          const d = new Date(item.date + 'T00:00:00');
+          d.setDate(d.getDate() + 1);
+          return d.toISOString().slice(0, 10).replace(/-/g, '');
+        })();
+        const gcTitle = encodeURIComponent(`${p.name} – Product Expiry`);
+        const gcDetails = encodeURIComponent(
+          item.type === 'expired'
+            ? `${p.name} expired on ${formatExpiryDate(item.date)}.`
+            : `${p.name} is expiring on ${formatExpiryDate(item.date)}. Check your inventory.`
+        );
+        const gcUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${gcTitle}&dates=${dateParts}/${nextDay}&details=${gcDetails}`;
+        reminderBtn = `<button class="notif-reminder-btn" data-gcurl="${gcUrl}" title="Add to Google Calendar">
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Add Reminder
+        </button>`;
+      }
+
       div.innerHTML = `
         <div class="notification-icon">${item.icon}</div>
         <div class="notification-content">
           ${item.html}
-          <div style="font-size:12px;color:var(--muted);margin-top:2px">Click to edit</div>
+          <div class="notif-item-actions">
+            <span class="notif-edit-hint">Click to edit</span>
+            ${reminderBtn}
+          </div>
         </div>
       `;
-      div.addEventListener('click', () => {
+
+      // Click on the whole card → edit product (but not if reminder btn clicked)
+      div.style.cursor = 'pointer';
+      div.title = 'Click to edit ' + p.name;
+      div.addEventListener('click', (e) => {
+        if (e.target.closest('.notif-reminder-btn')) return; // handled separately
         const notifMod = document.getElementById('notifications-modal');
         if (notifMod) { notifMod.classList.add('hidden'); notifMod.setAttribute('aria-hidden', 'true'); }
         showPage('productsPage');
         openEditProductModal(p);
       });
+
+      // Reminder button → open Google Calendar in new tab
+      const btn = div.querySelector('.notif-reminder-btn');
+      if (btn) {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          window.open(btn.dataset.gcurl, '_blank', 'noopener');
+        });
+      }
+
       container.appendChild(div);
     });
   };
