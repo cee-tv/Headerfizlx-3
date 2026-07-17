@@ -1,6 +1,6 @@
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, getDoc, updateDoc, setDoc, doc, deleteDoc, query, orderBy, where, limit, serverTimestamp, runTransaction, writeBatch } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs, getDoc, updateDoc, setDoc, doc, deleteDoc, query, orderBy, where, limit, serverTimestamp, runTransaction, writeBatch, onSnapshot } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
 
 
@@ -254,6 +254,10 @@ const historyFilters = { startDate: null, endDate: null, cashier: 'all' };
 let currentUserRole = null;
 let currentUsername = null;
 let currentEmployeeName = null;
+
+// ── Notes ──
+let _notesUnsubscribe = null;
+let _notesLastSeen = 0; // timestamp of last note seen, stored in localStorage
 
 
 const cleanStr = (s) => String(s || '').toLowerCase().trim();
@@ -1846,7 +1850,7 @@ function isPageAllowedForRole(id) {
 
   if (currentUserRole === 'admin') return true;
 
-  if (currentUserRole === 'cashier') return id === 'salesPage' || id === 'receiptsPage' || id === 'cashierPage' || id === 'eloadingPage' || id === 'icePage' || id === 'lendingPage';
+  if (currentUserRole === 'cashier') return id === 'salesPage' || id === 'receiptsPage' || id === 'cashierPage' || id === 'eloadingPage' || id === 'icePage' || id === 'lendingPage' || id === 'notesPage';
 
   if (id === 'financePage' || id === 'remitsPage' || id === 'profitsPage') return currentUserRole === 'admin';
   return false;
@@ -1885,7 +1889,7 @@ function showPage(id) {
   // Topbar page name
   const topbarPageName = document.getElementById('topbar-page-name');
   if (topbarPageName) {
-    const pageLabels = { salesPage: 'Sales', receiptsPage: 'Receipts', cashierPage: 'Cashier', productsPage: 'Stocks', lendingPage: 'Lending', financePage: 'Finance', remitsPage: 'Remits', profitsPage: 'Profits', adminPage: 'Admin', eloadingPage: 'eLoading', icePage: 'Ice Sales' };
+    const pageLabels = { salesPage: 'Sales', receiptsPage: 'Receipts', cashierPage: 'Cashier', productsPage: 'Stocks', lendingPage: 'Lending', financePage: 'Finance', remitsPage: 'Remits', profitsPage: 'Profits', adminPage: 'Admin', eloadingPage: 'eLoading', icePage: 'Ice Sales', notesPage: 'Notes' };
     topbarPageName.textContent = pageLabels[id] || id.replace('Page', '');
   }
 
@@ -1931,6 +1935,8 @@ function showPage(id) {
   }
   if (id === 'eloadingPage') loadEloadingPage();
   if (id === 'icePage') loadIcePage();
+  if (id === 'notesPage') initNotesPage();
+  else teardownNotesPage();
 }
 
 
@@ -4602,7 +4608,7 @@ function updateNavAccess() {
   document.querySelectorAll('.sidebar-link').forEach(b => {
     const pageId = b.getAttribute('data-page');
     if (currentUserRole === 'cashier') {
-      const allowed = ['salesPage', 'receiptsPage', 'cashierPage', 'eloadingPage', 'icePage', 'lendingPage'];
+      const allowed = ['salesPage', 'receiptsPage', 'cashierPage', 'eloadingPage', 'icePage', 'lendingPage', 'notesPage'];
       b.style.display = allowed.includes(pageId) ? '' : 'none';
     } else if (currentUserRole === 'admin') {
       const hiddenForAdmin = ['cashierPage', 'remitsPage', 'profitsPage'];
@@ -6446,4 +6452,163 @@ window.loadIcePage = loadIcePage;
   if (window.matchMedia('(display-mode: standalone)').matches) {
     localStorage.setItem(DISMISSED_KEY, '1');
   }
+})();
+
+// ── Notes Page ──────────────────────────────────────────────────
+const NOTES_SEEN_KEY = 'notes_last_seen';
+
+function _notesGetLastSeen() {
+  return parseInt(localStorage.getItem(NOTES_SEEN_KEY) || '0', 10);
+}
+function _notesSetLastSeen(ts) {
+  localStorage.setItem(NOTES_SEEN_KEY, String(ts));
+}
+
+function initNotesPage() {
+  // Wire up compose UI
+  const input = document.getElementById('notes-input');
+  const submitBtn = document.getElementById('notes-submit-btn');
+  const charCount = document.getElementById('notes-char-count');
+
+  if (input) {
+    input.oninput = () => {
+      if (charCount) charCount.textContent = `${input.value.length} / 1000`;
+    };
+    // Post on Ctrl/Cmd+Enter
+    input.onkeydown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); submitNote(); }
+    };
+  }
+  if (submitBtn) submitBtn.onclick = submitNote;
+
+  // Mark notes as seen whenever this page is open
+  _notesSetLastSeen(Date.now());
+  _updateNotesBadge(0);
+
+  // Start real-time listener
+  teardownNotesPage();
+  const q = query(collection(db, 'notes'), orderBy('createdAt', 'desc'), limit(100));
+  _notesUnsubscribe = onSnapshot(q, (snap) => {
+    renderNotesFeed(snap);
+    // Clear badge while on this page
+    _notesSetLastSeen(Date.now());
+    _updateNotesBadge(0);
+  }, (err) => {
+    console.error('Notes listener error', err);
+  });
+}
+
+function teardownNotesPage() {
+  if (_notesUnsubscribe) { _notesUnsubscribe(); _notesUnsubscribe = null; }
+}
+
+async function submitNote() {
+  const input = document.getElementById('notes-input');
+  const submitBtn = document.getElementById('notes-submit-btn');
+  if (!input) return;
+  const text = input.value.trim();
+  if (!text) return;
+
+  submitBtn && (submitBtn.disabled = true);
+  try {
+    await addDoc(collection(db, 'notes'), {
+      text,
+      author: currentEmployeeName || currentUsername || 'Unknown',
+      role: currentUserRole || 'cashier',
+      createdAt: serverTimestamp()
+    });
+    input.value = '';
+    const charCount = document.getElementById('notes-char-count');
+    if (charCount) charCount.textContent = '0 / 1000';
+  } catch (err) {
+    console.error('Failed to post note', err);
+    alert('Failed to post note. Please try again.');
+  } finally {
+    submitBtn && (submitBtn.disabled = false);
+  }
+}
+
+function renderNotesFeed(snap) {
+  const feed = document.getElementById('notes-feed');
+  if (!feed) return;
+
+  if (snap.empty) {
+    feed.innerHTML = '<div class="notes-empty">No notes yet. Be the first to post one.</div>';
+    return;
+  }
+
+  feed.innerHTML = '';
+  snap.forEach(docSnap => {
+    const d = docSnap.data();
+    const id = docSnap.id;
+    const isOwn = (d.author === (currentEmployeeName || currentUsername));
+    const isAdmin = currentUserRole === 'admin';
+
+    const card = document.createElement('div');
+    card.className = 'note-card' + (isOwn ? ' note-card-own' : '');
+
+    const ts = d.createdAt ? d.createdAt.toDate() : new Date();
+    const dateStr = ts.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
+    const timeStr = ts.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' });
+
+    const roleBadgeClass = d.role === 'admin' ? 'note-role-admin' : 'note-role-cashier';
+    const roleLabel = d.role === 'admin' ? 'Admin' : 'Employee';
+
+    card.innerHTML = `
+      <div class="note-header">
+        <div class="note-author-row">
+          <span class="note-avatar">${(d.author || '?')[0].toUpperCase()}</span>
+          <span class="note-author">${escHtml(d.author || 'Unknown')}</span>
+          <span class="note-role-badge ${roleBadgeClass}">${roleLabel}</span>
+        </div>
+        <div class="note-meta">
+          <span class="note-time">${dateStr} · ${timeStr}</span>
+          ${(isOwn || isAdmin) ? `<button class="note-delete-btn" data-id="${id}" title="Delete note">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          </button>` : ''}
+        </div>
+      </div>
+      <div class="note-body">${escHtml(d.text || '').replace(/\n/g, '<br>')}</div>
+    `;
+
+    const delBtn = card.querySelector('.note-delete-btn');
+    if (delBtn) {
+      delBtn.onclick = async () => {
+        if (!confirm('Delete this note?')) return;
+        try { await deleteDoc(doc(db, 'notes', id)); } catch (err) { alert('Could not delete note.'); }
+      };
+    }
+
+    feed.appendChild(card);
+  });
+}
+
+function _updateNotesBadge(count) {
+  const badge = document.getElementById('notes-unread-badge');
+  if (!badge) return;
+  if (count > 0) { badge.textContent = count > 99 ? '99+' : count; badge.style.display = ''; }
+  else { badge.style.display = 'none'; }
+}
+
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Background listener to track unread notes when not on the notes page
+(function startNotesUnreadWatcher() {
+  const q = query(collection(db, 'notes'), orderBy('createdAt', 'desc'), limit(1));
+  onSnapshot(q, (snap) => {
+    // Only count as unread if the notes page is not currently visible
+    const notesPageEl = document.getElementById('notesPage');
+    const isNotesOpen = notesPageEl && notesPageEl.style.display !== 'none';
+    if (isNotesOpen) { _notesSetLastSeen(Date.now()); _updateNotesBadge(0); return; }
+
+    if (!snap.empty) {
+      const latest = snap.docs[0].data();
+      const latestTs = latest.createdAt ? latest.createdAt.toMillis() : 0;
+      const lastSeen = _notesGetLastSeen();
+      // Count all unread — just flag with 1 indicator since we only listen to latest 1
+      _updateNotesBadge(latestTs > lastSeen ? 1 : 0);
+    }
+  });
 })();
