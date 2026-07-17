@@ -932,7 +932,7 @@ function renderAlertsUI() {
           d.setDate(d.getDate() + 1);
           return d.toISOString().slice(0, 10).replace(/-/g, '');
         })();
-        const gcTitle = encodeURIComponent(`${p.name} – Product Expiry`);
+        const gcTitle = encodeURIComponent(`⚠️ Expiry: ${p.name}`);
         const gcDetails = encodeURIComponent(
           item.type === 'expired'
             ? `${p.name} expired on ${formatExpiryDate(item.date)}.`
