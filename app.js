@@ -2169,13 +2169,22 @@ function openReceiptModal(saleObj = null) {
   if (saleObj) {
 
     const cash = Number(saleObj.cash) || 0;
-    const change = Number(saleObj.change) || (cash - totalAfter);
+    // Use explicit null check so a stored change of 0 isn't treated as falsy
+    const change = saleObj.change != null ? Number(saleObj.change) : (cash - totalAfter);
     cashInput.value = cash ? cash.toFixed(2) : '';
     cashInput.disabled = true;
-    changeEl.innerText = formatCurrency(change);
     if (receiptModalActions) receiptModalActions.style.display = 'none';
     if (receiptSaveBtn) receiptSaveBtn.style.display = 'none';
     if (cashierEl) cashierEl.innerText = 'Cashier: ' + (saleObj.cashier || 'Unknown');
+
+    // Hide the Change row for partial-payment (lending) receipts — change is meaningless there
+    if (saleObj.partialPayment) {
+      changeEl.innerText = formatCurrency(0);
+      if (changeEl.parentElement) changeEl.parentElement.style.display = 'none';
+    } else {
+      changeEl.innerText = formatCurrency(change);
+      if (changeEl.parentElement) changeEl.parentElement.style.display = '';
+    }
 
     // Remove any previously-injected lending info row
     const oldLendingInfoRow = document.getElementById('receipt-lending-info-row');
@@ -2280,6 +2289,9 @@ function closeReceiptModal() {
   if (oldLendingInfoRow) oldLendingInfoRow.remove();
   const oldCombinedRow = document.getElementById('receipt-combined-total-row');
   if (oldCombinedRow) oldCombinedRow.remove();
+  // Restore Change row visibility in case it was hidden for a lending receipt
+  const changeElClose = document.getElementById('receipt-change');
+  if (changeElClose && changeElClose.parentElement) changeElClose.parentElement.style.display = '';
   _partialPaymentCustomer = null;
   _partialPaymentBalance = 0;
 
