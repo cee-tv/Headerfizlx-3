@@ -3345,6 +3345,11 @@ function renderEditorGroups(container, productList) {
             <div class="edit-expiry-list expiry-list"></div>
             <button type="button" class="quick-btn edit-add-expiry-btn" style="margin-top:6px"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add Expiration Date</button>
           </div>
+          <div style="grid-column: span 2;">
+            <label>Custom Price Deals <span style="font-size:11px;color:var(--muted);font-weight:normal">optional — e.g. 3 for ₱5</span></label>
+            <div class="edit-custom-prices-list custom-prices-list"></div>
+            <button type="button" class="quick-btn edit-add-deal-btn" style="margin-top:6px"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add Deal</button>
+          </div>
         `;
 
         const editExpiryList = inputsDiv.querySelector('.edit-expiry-list');
@@ -3362,6 +3367,24 @@ function renderEditorGroups(container, productList) {
           editExpiryList.appendChild(erow);
         }
         (p.expirationDates || []).forEach(e => addEditExpiryRow(e.date, e.qty));
+
+        const editDealList = inputsDiv.querySelector('.edit-custom-prices-list');
+        function addEditDealRow(qty, price) {
+          const drow = document.createElement('div');
+          drow.className = 'custom-price-row';
+          drow.innerHTML = `
+            <span class="cp-label">Buy</span>
+            <input type="number" class="edit-cp-qty" min="1" step="1" placeholder="Qty" value="${qty != null && qty !== '' ? qty : ''}" style="max-width:70px" />
+            <span class="cp-label">pcs for ₱</span>
+            <input type="number" class="edit-cp-price" min="0.01" step="0.01" placeholder="Price" value="${price != null && price !== '' ? price : ''}" style="max-width:90px" />
+            <button type="button" class="quick-btn edit-cp-remove" title="Remove"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+          `;
+          drow.querySelector('.edit-cp-qty').addEventListener('change', scheduleAutoSave);
+          drow.querySelector('.edit-cp-price').addEventListener('change', scheduleAutoSave);
+          drow.querySelector('.edit-cp-remove').onclick = () => { drow.remove(); scheduleAutoSave(); };
+          editDealList.appendChild(drow);
+        }
+        (p.customPrices || []).forEach(d => addEditDealRow(d.qty, d.price));
 
         // Live profit calculation
         const editPriceIn = inputsDiv.querySelector('.edit-price');
@@ -3407,8 +3430,13 @@ function renderEditorGroups(container, productList) {
             const eqty = Number(erow.querySelector('.edit-expiry-qty-input').value) || 0;
             if (edate) newExpirationDates.push({ date: edate, qty: eqty });
           });
-          // Preserve existing customPrices when doing inline edits (custom prices are managed via Add/Edit Product modal)
-          const existingCustomPrices = (products.find(pr => pr.id === id) || {}).customPrices || [];
+          // Collect custom price deals from inline edit card
+          const existingCustomPrices = [];
+          editDealList.querySelectorAll('.custom-price-row').forEach(drow => {
+            const dqty = Number(drow.querySelector('.edit-cp-qty').value);
+            const dprice = Number(drow.querySelector('.edit-cp-price').value);
+            if (dqty > 0 && dprice > 0) existingCustomPrices.push({ qty: dqty, price: dprice });
+          });
           if (!newName || isNaN(newPrice) || newPrice <= 0 || isNaN(newStock) || newStock < 0 || isNaN(newCapital) || newCapital < 0) {
             saveStatus.textContent = '';
             return;
@@ -3456,6 +3484,9 @@ function renderEditorGroups(container, productList) {
 
         const editAddExpiryBtn = inputsDiv.querySelector('.edit-add-expiry-btn');
         if (editAddExpiryBtn) editAddExpiryBtn.onclick = () => addEditExpiryRow('', '');
+
+        const editAddDealBtn = inputsDiv.querySelector('.edit-add-deal-btn');
+        if (editAddDealBtn) editAddDealBtn.onclick = () => addEditDealRow('', '');
 
         const editScanBarcodeBtn = inputsDiv.querySelector('.edit-scan-barcode-btn');
         if (editScanBarcodeBtn) editScanBarcodeBtn.onclick = () => {
