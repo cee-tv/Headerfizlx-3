@@ -4512,14 +4512,19 @@ body.sidebar-collapsed .topbar {
   border: 1px solid rgba(34,197,94,0.25);
 }
 .pec-stock-low {
-  background: rgba(251,191,36,0.15);
-  color: #b45309;
-  border: 1px solid rgba(251,191,36,0.3);
+  background: rgba(234,179,8,0.15);
+  color: #a16207;
+  border: 1px solid rgba(234,179,8,0.35);
+}
+.pec-stock-verylow {
+  background: rgba(249,115,22,0.15);
+  color: #c2410c;
+  border: 1px solid rgba(249,115,22,0.35);
 }
 .pec-stock-out {
-  background: rgba(239,68,68,0.1);
-  color: var(--danger);
-  border: 1px solid rgba(239,68,68,0.2);
+  background: rgba(239,68,68,0.12);
+  color: #dc2626;
+  border: 1px solid rgba(239,68,68,0.3);
 }
 .pec-capital-tag {
   background: rgba(99,102,241,0.1);
@@ -4569,16 +4574,20 @@ body.sidebar-collapsed .topbar {
   flex-shrink: 0;
 }
 .btn-stock-ok {
-  background: rgba(255,255,255,0.18);
-  color: rgba(255,255,255,0.85);
+  background: rgba(34,197,94,0.25);
+  color: #4ade80;
 }
 .btn-stock-low {
-  background: rgba(251,191,36,0.3);
-  color: #fbbf24;
+  background: rgba(234,179,8,0.3);
+  color: #fde047;
+}
+.btn-stock-verylow {
+  background: rgba(249,115,22,0.3);
+  color: #fb923c;
 }
 .btn-stock-out {
-  background: rgba(255,255,255,0.1);
-  color: rgba(255,255,255,0.45);
+  background: rgba(239,68,68,0.25);
+  color: #f87171;
 }
 
 /* Ensure product buttons stretch vertically for the bottom-row layout */

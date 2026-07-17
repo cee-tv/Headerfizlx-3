@@ -1061,12 +1061,12 @@ function renderLendingProducts() {
     let btn = document.createElement("button");
     const stock = Number(p.stock || 0);
     const isOut = stock <= 0;
-    const isLow = !isOut && stock <= LOW_STOCK_THRESHOLD;
+    const isVeryLow = !isOut && stock <= 1;
+    const isLow = !isOut && !isVeryLow && stock <= LOW_STOCK_THRESHOLD;
+    const stockCls = isOut ? 'btn-stock-out' : isVeryLow ? 'btn-stock-verylow' : isLow ? 'btn-stock-low' : 'btn-stock-ok';
     const stockDisplay = isOut
-      ? `<span class="btn-stock btn-stock-out">Out of stock</span>`
-      : isLow
-        ? `<span class="btn-stock btn-stock-low">${Number(stock).toFixed(p.unit&&p.unit.toLowerCase()==='kg'?2:0)} ${p.unit}</span>`
-        : `<span class="btn-stock btn-stock-ok">${Number(stock).toFixed(p.unit&&p.unit.toLowerCase()==='kg'?2:0)} ${p.unit}</span>`;
+      ? `<span class="btn-stock ${stockCls}">Out of stock</span>`
+      : `<span class="btn-stock ${stockCls}">${Number(stock).toFixed(p.unit&&p.unit.toLowerCase()==='kg'?2:0)} ${p.unit}</span>`;
     btn.innerHTML = `
       <span class="btn-name">${p.name}</span>
       <div class="btn-bottom-row">
@@ -1406,12 +1406,12 @@ function renderProducts() {
     let btn = document.createElement("button");
     const stock = Number(p.stock || 0);
     const isOut = stock <= 0;
-    const isLow = !isOut && stock <= LOW_STOCK_THRESHOLD;
+    const isVeryLow = !isOut && stock <= 1;
+    const isLow = !isOut && !isVeryLow && stock <= LOW_STOCK_THRESHOLD;
+    const stockCls = isOut ? 'btn-stock-out' : isVeryLow ? 'btn-stock-verylow' : isLow ? 'btn-stock-low' : 'btn-stock-ok';
     const stockDisplay = isOut
-      ? `<span class="btn-stock btn-stock-out">Out of stock</span>`
-      : isLow
-        ? `<span class="btn-stock btn-stock-low">${Number(stock).toFixed(p.unit&&p.unit.toLowerCase()==='kg'?2:0)} ${p.unit}</span>`
-        : `<span class="btn-stock btn-stock-ok">${Number(stock).toFixed(p.unit&&p.unit.toLowerCase()==='kg'?2:0)} ${p.unit}</span>`;
+      ? `<span class="btn-stock ${stockCls}">Out of stock</span>`
+      : `<span class="btn-stock ${stockCls}">${Number(stock).toFixed(p.unit&&p.unit.toLowerCase()==='kg'?2:0)} ${p.unit}</span>`;
     const isKg = p.unit && p.unit.toLowerCase() === 'kg';
     // Only show deals that are genuinely cheaper than regular price
     const validDeals = (p.customPrices || []).filter(d => d.qty > 0 && d.price > 0 && d.price < d.qty * p.price);
@@ -3291,8 +3291,8 @@ function renderEditorGroups(container, productList) {
         : `<div class="pec-title-row"><h4>${p.name}</h4></div>`;
       if (!productsEditMode) {
         const ps = Number(p.stock || 0);
-        const pStockClass = ps <= 0 ? 'pec-stock-out' : ps <= 2 ? 'pec-stock-low' : 'pec-stock-ok';
-        const pStockLabel = ps <= 0 ? 'Out of stock' : ps <= 2 ? 'Low: '+ps+' '+p.unit : ps+' '+p.unit;
+        const pStockClass = ps <= 0 ? 'pec-stock-out' : ps <= 1 ? 'pec-stock-verylow' : ps <= 2 ? 'pec-stock-low' : 'pec-stock-ok';
+        const pStockLabel = ps <= 0 ? 'Out of stock' : ps <= 1 ? 'Critical: '+ps+' '+p.unit : ps <= 2 ? 'Low: '+ps+' '+p.unit : ps+' '+p.unit;
         const expiryBadge = getExpiryBadgeHtml(p);
         const profitPerUnit = (Number(p.price) || 0) - (Number(p.capital) || 0);
         const profitClass = profitPerUnit > 0 ? 'pec-profit-pos' : profitPerUnit < 0 ? 'pec-profit-neg' : 'pec-profit-zero';
