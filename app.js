@@ -4847,6 +4847,9 @@ function renderCustomerViewProducts() {
     );
   }
 
+  const countBar = document.getElementById('customer-view-count-bar');
+  if (countBar) countBar.textContent = filtered.length === 0 ? '' : `${filtered.length} product${filtered.length !== 1 ? 's' : ''}`;
+
   if (!filtered.length) {
     grid.innerHTML = '<div class="cv-empty">No products found.</div>';
     return;
