@@ -4907,51 +4907,39 @@ function buildCvCard(p) {
   card.className = 'cv-card';
 
   const cat = _cvCategories.find(c => c.name === p.category);
-
-  // Top section — badge + name
-  const top = document.createElement('div');
-  top.className = 'cv-card-top';
-
   if (p.category) {
     const badge = document.createElement('div');
     badge.className = 'cv-cat-badge';
     if (cat && cat.color) badge.style.background = cat.color;
     badge.textContent = p.category;
-    top.appendChild(badge);
+    card.appendChild(badge);
   }
 
   const name = document.createElement('div');
   name.className = 'cv-name';
   name.textContent = p.name;
-  top.appendChild(name);
-
-  // Deal prices in top section
-  if (p.customPrices && p.customPrices.length) {
-    p.customPrices.forEach(cp => {
-      const deal = document.createElement('div');
-      deal.className = 'cv-deal';
-      deal.textContent = `${cp.qty} pcs → ${formatCurrency(cp.price)}`;
-      top.appendChild(deal);
-    });
-  }
-
-  card.appendChild(top);
-
-  // Bottom section — price + unit
-  const bottom = document.createElement('div');
-  bottom.className = 'cv-card-bottom';
+  card.appendChild(name);
 
   const price = document.createElement('div');
   price.className = 'cv-price';
   price.textContent = formatCurrency(p.price);
-  bottom.appendChild(price);
+  card.appendChild(price);
 
   const unit = document.createElement('div');
   unit.className = 'cv-unit';
-  unit.textContent = '/ ' + (p.unit || 'pc');
-  bottom.appendChild(unit);
+  unit.textContent = 'per ' + (p.unit || 'pc');
+  card.appendChild(unit);
 
-  card.appendChild(bottom);
+  // Show deal prices if any
+  if (p.customPrices && p.customPrices.length) {
+    p.customPrices.forEach(cp => {
+      const deal = document.createElement('div');
+      deal.className = 'cv-unit';
+      deal.style.color = 'var(--primary)';
+      deal.textContent = `${cp.qty} pcs → ${formatCurrency(cp.price)}`;
+      card.appendChild(deal);
+    });
+  }
 
   return card;
 }
