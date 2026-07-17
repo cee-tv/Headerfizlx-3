@@ -836,7 +836,7 @@ function checkExpiringProducts() {
           product: p,
           date: entry.date,
           icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
-          html: `<strong>${p.name}</strong> ${qty > 0 ? '(' + qty + ' ' + p.unit + ') ' : ''}<span style="color:var(--danger)">expired</span> on <strong>${entry.date}</strong>!`
+          html: `<strong>${p.name}</strong> ${qty > 0 ? '(' + qty + ' ' + p.unit + ') ' : ''}<span style="color:var(--danger)">expired</span> on <strong>${formatExpiryDate(entry.date)}</strong>!`
         });
       } else if (entry.date <= warnStr) {
         items.push({
@@ -844,7 +844,7 @@ function checkExpiringProducts() {
           product: p,
           date: entry.date,
           icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
-          html: `<strong>${p.name}</strong> ${qty > 0 ? '(' + qty + ' ' + p.unit + ') ' : ''}expires on <strong>${entry.date}</strong>`
+          html: `<strong>${p.name}</strong> ${qty > 0 ? '(' + qty + ' ' + p.unit + ') ' : ''}expires on <strong>${formatExpiryDate(entry.date)}</strong>`
         });
       }
     });
@@ -853,6 +853,12 @@ function checkExpiringProducts() {
   items.sort((a, b) => a.date.localeCompare(b.date));
   _expiringAlertItems = items;
   renderAlertsUI();
+}
+
+function formatExpiryDate(dateStr) {
+  if (!dateStr) return dateStr;
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function getExpiryBadgeHtml(p) {
@@ -865,13 +871,13 @@ function getExpiryBadgeHtml(p) {
   const sorted = [...entries].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
   const tags = sorted.map(e => {
     let cls = 'pec-expiry-ok';
-    let label = 'Exp: ' + e.date;
+    let label = 'Exp: ' + formatExpiryDate(e.date);
     if (e.date < todayStr) {
       cls = 'pec-expiry-expired';
-      label = 'Expired: ' + e.date;
+      label = 'Expired: ' + formatExpiryDate(e.date);
     } else if (e.date <= warnStr) {
       cls = 'pec-expiry-warn';
-      label = 'Exp soon: ' + e.date;
+      label = 'Exp soon: ' + formatExpiryDate(e.date);
     }
     const qty = Number(e.qty || 0);
     return `<span class="pec-expiry-tag ${cls}">${label}${qty > 0 ? ' (Qty: ' + qty + ')' : ''}</span>`;
