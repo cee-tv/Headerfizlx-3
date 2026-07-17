@@ -4168,19 +4168,26 @@ body.sidebar-collapsed .topbar {
 
 /* ---- Stock warning on product buttons ---- */
 .btn-low-stock {
-  background: linear-gradient(135deg, #92400e, #b45309) !important;
+  background: linear-gradient(135deg, #854d0e, #a16207) !important;
   color: #fff !important;
-  border: 2px solid #f59e0b !important;
+  border: 2px solid #eab308 !important;
 }
 .btn-low-stock:hover {
-  background: linear-gradient(135deg, #b45309, #d97706) !important;
+  background: linear-gradient(135deg, #a16207, #ca8a04) !important;
+}
+.btn-verylow-stock {
+  background: linear-gradient(135deg, #9a3412, #c2410c) !important;
+  color: #fff !important;
+  border: 2px solid #f97316 !important;
+}
+.btn-verylow-stock:hover {
+  background: linear-gradient(135deg, #c2410c, #ea580c) !important;
 }
 .btn-out-of-stock {
-  background: linear-gradient(135deg, #3f3f3f, #1f1f1f) !important;
-  color: rgba(255,255,255,0.4) !important;
-  border: 2px solid #555 !important;
+  background: linear-gradient(135deg, #7f1d1d, #991b1b) !important;
+  color: rgba(255,255,255,0.75) !important;
+  border: 2px solid #ef4444 !important;
   cursor: not-allowed !important;
-  opacity: 0.6 !important;
 }
 .btn-out-of-stock:hover {
   transform: none !important;
@@ -4450,6 +4457,23 @@ body.sidebar-collapsed .topbar {
   border-color: var(--primary) !important;
   transform: translateY(-3px) !important;
   box-shadow: var(--shadow-md) !important;
+}
+.pec-card-ok {
+  background: var(--card) !important;
+  border-color: rgba(34,197,94,0.3) !important;
+}
+.pec-card-low {
+  background: rgba(234,179,8,0.08) !important;
+  border-color: rgba(234,179,8,0.4) !important;
+}
+.pec-card-verylow {
+  background: rgba(249,115,22,0.1) !important;
+  border-color: rgba(249,115,22,0.45) !important;
+}
+.pec-card-out {
+  background: rgba(239,68,68,0.08) !important;
+  border-color: rgba(239,68,68,0.4) !important;
+  opacity: 0.85;
 }
 
 /* Card title row */

@@ -1078,6 +1078,9 @@ function renderLendingProducts() {
     if (isOut) {
       btn.classList.add('btn-out-of-stock');
       btn.title = p.name + ' is out of stock';
+    } else if (isVeryLow) {
+      btn.classList.add('btn-verylow-stock');
+      btn.title = 'Critical stock: ' + stock + ' ' + (p.unit || '') + ' remaining';
     } else if (isLow) {
       btn.classList.add('btn-low-stock');
       btn.title = 'Low stock: ' + stock + ' ' + (p.unit || '') + ' remaining';
@@ -1089,9 +1092,9 @@ function renderLendingProducts() {
     };
 
     const categoryInfo = categories.find(c => c.name === p.category);
-    if (!isOut && !isLow && categoryInfo && categoryInfo.color) {
+    if (!isOut && !isVeryLow && !isLow && categoryInfo && categoryInfo.color) {
       btn.style.background = categoryInfo.color;
-    } else if (!isOut && !isLow) {
+    } else if (!isOut && !isVeryLow && !isLow) {
       const cat = (p.category || '').toLowerCase().trim();
       if (cat === 'vegetables') btn.classList.add('category-vegetables');
       else if (cat === 'frozen foods') btn.classList.add('category-frozen-foods');
@@ -1431,6 +1434,9 @@ function renderProducts() {
     if (isOut) {
       btn.classList.add('btn-out-of-stock');
       btn.title = p.name + ' is out of stock';
+    } else if (isVeryLow) {
+      btn.classList.add('btn-verylow-stock');
+      btn.title = 'Critical stock: ' + stock + ' ' + (p.unit || '') + ' remaining';
     } else if (isLow) {
       btn.classList.add('btn-low-stock');
       btn.title = 'Low stock: ' + stock + ' ' + (p.unit || '') + ' remaining';
@@ -1443,9 +1449,9 @@ function renderProducts() {
 
 
     const categoryInfo = categories.find(c => c.name === p.category);
-    if (!isOut && !isLow && categoryInfo && categoryInfo.color) {
+    if (!isOut && !isVeryLow && !isLow && categoryInfo && categoryInfo.color) {
       btn.style.background = categoryInfo.color;
-    } else if (!isOut && !isLow) {
+    } else if (!isOut && !isVeryLow && !isLow) {
 
       const cat = (p.category || '').toLowerCase().trim();
       if (cat === 'vegetables') btn.classList.add('category-vegetables');
@@ -3277,7 +3283,9 @@ function renderEditorGroups(container, productList) {
     byCat[cat].forEach(p => {
       const id = p.id;
       const row = document.createElement('div');
-      row.className = 'product-edit-card';
+      const ps0 = Number(p.stock || 0);
+      const cardStockCls = ps0 <= 0 ? 'pec-card-out' : ps0 <= 1 ? 'pec-card-verylow' : ps0 <= 2 ? 'pec-card-low' : 'pec-card-ok';
+      row.className = 'product-edit-card ' + cardStockCls;
 
 
       const headerDiv = document.createElement('div');
