@@ -4903,54 +4903,43 @@ function renderCustomerViewProducts() {
 }
 
 function buildCvCard(p) {
-  const cat = _cvCategories.find(c => c.name === p.category);
-  const accentColor = (cat && cat.color) ? cat.color : 'var(--primary)';
-
   const card = document.createElement('div');
   card.className = 'cv-card';
-  card.style.setProperty('--cv-accent', accentColor);
 
-  // Colored accent bar at the top
-  const accent = document.createElement('div');
-  accent.className = 'cv-card-accent';
-  card.appendChild(accent);
-
-  // Info section: name + unit + deals
-  const info = document.createElement('div');
-  info.className = 'cv-info';
+  const cat = _cvCategories.find(c => c.name === p.category);
+  if (p.category) {
+    const badge = document.createElement('div');
+    badge.className = 'cv-cat-badge';
+    if (cat && cat.color) badge.style.background = cat.color;
+    badge.textContent = p.category;
+    card.appendChild(badge);
+  }
 
   const name = document.createElement('div');
   name.className = 'cv-name';
   name.textContent = p.name;
-  info.appendChild(name);
+  card.appendChild(name);
+
+  const price = document.createElement('div');
+  price.className = 'cv-price';
+  price.textContent = formatCurrency(p.price);
+  card.appendChild(price);
 
   const unit = document.createElement('div');
   unit.className = 'cv-unit';
   unit.textContent = 'per ' + (p.unit || 'pc');
-  info.appendChild(unit);
+  card.appendChild(unit);
 
+  // Show deal prices if any
   if (p.customPrices && p.customPrices.length) {
-    const deals = document.createElement('div');
-    deals.className = 'cv-deals';
     p.customPrices.forEach(cp => {
-      const deal = document.createElement('span');
-      deal.className = 'cv-deal-tag';
+      const deal = document.createElement('div');
+      deal.className = 'cv-unit';
+      deal.style.color = 'var(--primary)';
       deal.textContent = `${cp.qty} pcs → ${formatCurrency(cp.price)}`;
-      deals.appendChild(deal);
+      card.appendChild(deal);
     });
-    info.appendChild(deals);
   }
-
-  card.appendChild(info);
-
-  // Price at the bottom
-  const priceWrap = document.createElement('div');
-  priceWrap.className = 'cv-price-wrap';
-  const price = document.createElement('div');
-  price.className = 'cv-price';
-  price.textContent = formatCurrency(p.price);
-  priceWrap.appendChild(price);
-  card.appendChild(priceWrap);
 
   return card;
 }
