@@ -1979,6 +1979,19 @@ input[type="number"] {
     padding: 18px;
     min-width: 280px;
     max-width: 420px;
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+
+  /* Keep action buttons always visible at the bottom in landscape */
+  .modal-content .modal-actions {
+    position: sticky;
+    bottom: 0;
+    background: var(--card);
+    padding-top: 10px;
+    margin-top: 12px;
+    border-top: 1px solid var(--border);
+    z-index: 1;
   }
 }
 

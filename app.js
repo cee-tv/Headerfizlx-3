@@ -1844,6 +1844,11 @@ if (partialCancelBtn) partialCancelBtn.onclick = () => {
 const checkoutBtnEl = document.getElementById("checkout");
 if (checkoutBtnEl) checkoutBtnEl.onclick = () => {
 
+  if (cart.length === 0) {
+    alert('Please add items to the cart before checkout.');
+    return;
+  }
+
   if (!canCheckout()) {
     alert('You must start a shift before checkout.');
     return;
