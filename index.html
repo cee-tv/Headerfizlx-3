@@ -157,8 +157,29 @@
       </div>
 
       <div id="login-error" class="login-error"></div>
+
+      <div style="margin-top:16px;text-align:center">
+        <button id="customer-view-btn" class="customer-view-login-btn">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          View Price List
+        </button>
+      </div>
     </div>
 
+  </div>
+
+  <!-- Customer Price List Modal -->
+  <div id="customer-view-modal" class="customer-view-modal hidden" aria-hidden="true">
+    <div class="customer-view-inner">
+      <div class="customer-view-header">
+        <div class="customer-view-store-name">Alipante Store — Price List</div>
+        <button id="customer-view-close" class="customer-view-close" aria-label="Close">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div id="customer-view-categories" class="customer-view-cats"></div>
+      <div id="customer-view-products" class="customer-view-grid"></div>
+    </div>
   </div>
 
   <div class="container">

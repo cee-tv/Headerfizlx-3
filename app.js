@@ -4758,6 +4758,178 @@ async function tryRestoreSession() {
 const logoutBtn = document.getElementById('logout-btn');
 if (logoutBtn) logoutBtn.onclick = () => { currentUserRole = null; currentUsername = null; currentEmployeeName = null; updateNavAccess(); clearSession(); showLogin(); };
 
+// ── Customer View (price list, no login required) ──
+let _cvActiveCategory = 'All';
+let _cvProducts = [];
+let _cvCategories = [];
+
+async function openCustomerView() {
+  const modal = document.getElementById('customer-view-modal');
+  if (!modal) return;
+  modal.classList.remove('hidden');
+  modal.setAttribute('aria-hidden', 'false');
+
+  const grid = document.getElementById('customer-view-products');
+  const catsEl = document.getElementById('customer-view-categories');
+  grid.innerHTML = '<div class="cv-empty">Loading...</div>';
+  catsEl.innerHTML = '';
+
+  try {
+    // Load categories
+    const catSnap = await getDocs(query(collection(db, 'categories'), orderBy('name')));
+    _cvCategories = [];
+    catSnap.forEach(d => _cvCategories.push({ id: d.id, ...d.data() }));
+
+    // Load products
+    const prodSnap = await getDocs(collection(db, 'products'));
+    _cvProducts = [];
+    prodSnap.forEach(d => {
+      const data = d.data() || {};
+      _cvProducts.push({
+        name: data.name,
+        price: Number(data.price || 0),
+        unit: data.unit || '',
+        category: (data.category || '').trim(),
+        customPrices: Array.isArray(data.customPrices)
+          ? data.customPrices.map(cp => ({ qty: Number(cp.qty), price: Number(cp.price) })).filter(cp => cp.qty > 0 && cp.price > 0)
+          : []
+      });
+    });
+
+    _cvActiveCategory = 'All';
+    renderCustomerViewCategories();
+    renderCustomerViewProducts();
+  } catch (err) {
+    console.error('Customer view load failed', err);
+    grid.innerHTML = '<div class="cv-empty">Failed to load price list.</div>';
+  }
+}
+
+function renderCustomerViewCategories() {
+  const catsEl = document.getElementById('customer-view-categories');
+  if (!catsEl) return;
+  catsEl.innerHTML = '';
+
+  const all = document.createElement('button');
+  all.className = 'category-btn' + (_cvActiveCategory === 'All' ? ' active' : '');
+  all.textContent = 'All';
+  all.onclick = () => { _cvActiveCategory = 'All'; renderCustomerViewCategories(); renderCustomerViewProducts(); };
+  catsEl.appendChild(all);
+
+  _cvCategories.forEach(cat => {
+    const btn = document.createElement('button');
+    btn.className = 'category-btn' + (_cvActiveCategory === cat.name ? ' active' : '');
+    btn.textContent = cat.name;
+    if (cat.color) { btn.style.background = cat.color; btn.style.borderColor = cat.color; btn.style.color = '#fff'; }
+    btn.onclick = () => { _cvActiveCategory = cat.name; renderCustomerViewCategories(); renderCustomerViewProducts(); };
+    catsEl.appendChild(btn);
+  });
+}
+
+function renderCustomerViewProducts() {
+  const grid = document.getElementById('customer-view-products');
+  if (!grid) return;
+  grid.innerHTML = '';
+
+  const filtered = _cvActiveCategory === 'All'
+    ? _cvProducts
+    : _cvProducts.filter(p => p.category === _cvActiveCategory);
+
+  if (!filtered.length) {
+    grid.innerHTML = '<div class="cv-empty">No products found.</div>';
+    return;
+  }
+
+  // Group by category when showing All
+  if (_cvActiveCategory === 'All') {
+    const grouped = {};
+    filtered.forEach(p => {
+      const cat = p.category || 'Uncategorized';
+      if (!grouped[cat]) grouped[cat] = [];
+      grouped[cat].push(p);
+    });
+
+    // Sort categories in same order as _cvCategories, then uncategorized last
+    const catOrder = _cvCategories.map(c => c.name);
+    const sortedKeys = Object.keys(grouped).sort((a, b) => {
+      const ai = catOrder.indexOf(a), bi = catOrder.indexOf(b);
+      if (ai === -1 && bi === -1) return a.localeCompare(b);
+      if (ai === -1) return 1;
+      if (bi === -1) return -1;
+      return ai - bi;
+    });
+
+    sortedKeys.forEach(cat => {
+      const header = document.createElement('div');
+      header.className = 'cv-section-header';
+      header.textContent = cat;
+      grid.appendChild(header);
+      grouped[cat].forEach(p => grid.appendChild(buildCvCard(p)));
+    });
+  } else {
+    filtered.forEach(p => grid.appendChild(buildCvCard(p)));
+  }
+}
+
+function buildCvCard(p) {
+  const card = document.createElement('div');
+  card.className = 'cv-card';
+
+  const cat = _cvCategories.find(c => c.name === p.category);
+  if (p.category) {
+    const badge = document.createElement('div');
+    badge.className = 'cv-cat-badge';
+    if (cat && cat.color) badge.style.background = cat.color;
+    badge.textContent = p.category;
+    card.appendChild(badge);
+  }
+
+  const name = document.createElement('div');
+  name.className = 'cv-name';
+  name.textContent = p.name;
+  card.appendChild(name);
+
+  const price = document.createElement('div');
+  price.className = 'cv-price';
+  price.textContent = formatCurrency(p.price);
+  card.appendChild(price);
+
+  const unit = document.createElement('div');
+  unit.className = 'cv-unit';
+  unit.textContent = 'per ' + (p.unit || 'pc');
+  card.appendChild(unit);
+
+  // Show deal prices if any
+  if (p.customPrices && p.customPrices.length) {
+    p.customPrices.forEach(cp => {
+      const deal = document.createElement('div');
+      deal.className = 'cv-unit';
+      deal.style.color = 'var(--primary)';
+      deal.textContent = `${cp.qty} pcs → ${formatCurrency(cp.price)}`;
+      card.appendChild(deal);
+    });
+  }
+
+  return card;
+}
+
+function closeCustomerView() {
+  const modal = document.getElementById('customer-view-modal');
+  if (modal) { modal.classList.add('hidden'); modal.setAttribute('aria-hidden', 'true'); }
+}
+
+const customerViewBtn = document.getElementById('customer-view-btn');
+if (customerViewBtn) customerViewBtn.onclick = openCustomerView;
+
+const customerViewClose = document.getElementById('customer-view-close');
+if (customerViewClose) customerViewClose.onclick = closeCustomerView;
+
+// Close on backdrop click (outside inner content)
+const customerViewModal = document.getElementById('customer-view-modal');
+if (customerViewModal) customerViewModal.addEventListener('click', e => {
+  if (e.target === customerViewModal) closeCustomerView();
+});
+
 const loginBtn = document.getElementById('login-btn');
 if (loginBtn) loginBtn.onclick = async () => {
   const username = document.getElementById('login-username')?.value.trim();
