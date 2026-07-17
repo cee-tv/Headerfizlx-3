@@ -806,7 +806,7 @@ let _lowStockAlertItems = [];
 let _expiringAlertItems = [];
 
 function checkLowStock() {
-  const threshold = 5;
+  const threshold = 2;
   const lowStockProducts = products.filter(p => p.stock <= threshold);
   _lowStockAlertItems = lowStockProducts.map(p => ({
     type: 'low-stock',
@@ -1056,7 +1056,7 @@ function renderLendingProducts() {
 
   filtered = [...filtered].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
-  const LOW_STOCK_THRESHOLD = 5;
+  const LOW_STOCK_THRESHOLD = 2;
   filtered.forEach((p) => {
     let btn = document.createElement("button");
     const stock = Number(p.stock || 0);
@@ -1401,7 +1401,7 @@ function renderProducts() {
 
   filtered = [...filtered].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
-  const LOW_STOCK_THRESHOLD = 5;
+  const LOW_STOCK_THRESHOLD = 2;
   filtered.forEach((p) => {
     let btn = document.createElement("button");
     const stock = Number(p.stock || 0);
@@ -3291,8 +3291,8 @@ function renderEditorGroups(container, productList) {
         : `<div class="pec-title-row"><h4>${p.name}</h4></div>`;
       if (!productsEditMode) {
         const ps = Number(p.stock || 0);
-        const pStockClass = ps <= 0 ? 'pec-stock-out' : ps <= 5 ? 'pec-stock-low' : 'pec-stock-ok';
-        const pStockLabel = ps <= 0 ? 'Out of stock' : ps <= 5 ? 'Low: '+ps+' '+p.unit : ps+' '+p.unit;
+        const pStockClass = ps <= 0 ? 'pec-stock-out' : ps <= 2 ? 'pec-stock-low' : 'pec-stock-ok';
+        const pStockLabel = ps <= 0 ? 'Out of stock' : ps <= 2 ? 'Low: '+ps+' '+p.unit : ps+' '+p.unit;
         const expiryBadge = getExpiryBadgeHtml(p);
         const profitPerUnit = (Number(p.price) || 0) - (Number(p.capital) || 0);
         const profitClass = profitPerUnit > 0 ? 'pec-profit-pos' : profitPerUnit < 0 ? 'pec-profit-neg' : 'pec-profit-zero';
