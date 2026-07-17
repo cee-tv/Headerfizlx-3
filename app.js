@@ -2454,44 +2454,45 @@ async function loadSalesSummary() {
   const q = query(collection(db, 'sales'), where('shiftId', '==', currentShift.id));
   const qSnap = await getDocs(q);
 
-  const itemsSummary = {};
+  const salesRows = [];
   qSnap.forEach(docSnap => {
     const s = docSnap.data();
     const ts = s.timestamp && s.timestamp.toDate ? s.timestamp.toDate() : (s.timestamp ? new Date(s.timestamp) : null);
     if (!ts || ts < todayStart || ts > todayEnd) return; // skip other days
     totalIncome += Number(s.total || 0);
     (s.items || []).forEach(it => {
-      const key = `${it.name}||${it.unit}`;
-      if (!itemsSummary[key]) itemsSummary[key] = { name: it.name, unit: it.unit, weight: 0, qty: 0 };
-      if (it.unit && it.unit.toLowerCase() === 'kg') {
-        itemsSummary[key].weight += Number(it.weight || 0);
-      } else {
-        itemsSummary[key].qty += Number(it.qty || 0);
-      }
+      salesRows.push({ ts, name: it.name, unit: it.unit, qty: Number(it.qty || 0), weight: Number(it.weight || 0) });
     });
   });
+
+  // Sort chronologically so entries appear in the order they were sold
+  salesRows.sort((a, b) => a.ts - b.ts);
 
   const tbody = document.getElementById('items-sold-tbody');
   tbody.innerHTML = '';
 
-  Object.values(itemsSummary).forEach(entry => {
-      const tr = document.createElement('tr');
-      const nameTd = document.createElement('td');
-      const unitTd = document.createElement('td');
-      const soldTd = document.createElement('td');
+  salesRows.forEach(entry => {
+    const tr = document.createElement('tr');
+    const timeTd = document.createElement('td');
+    const nameTd = document.createElement('td');
+    const unitTd = document.createElement('td');
+    const soldTd = document.createElement('td');
 
-      nameTd.innerText = entry.name;
-      unitTd.innerText = entry.unit;
-      if (entry.unit && entry.unit.toLowerCase() === 'kg') {
-        soldTd.innerText = `${Number(entry.weight).toFixed(2)} Kg`;
-      } else {
-        soldTd.innerText = `${Number(Number(entry.qty).toFixed(2))} pcs`;
-      }
+    timeTd.innerText = entry.ts.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' });
+    timeTd.style.cssText = 'font-size:12px;color:var(--muted);white-space:nowrap';
+    nameTd.innerText = entry.name;
+    unitTd.innerText = entry.unit;
+    if (entry.unit && entry.unit.toLowerCase() === 'kg') {
+      soldTd.innerText = `${Number(entry.weight).toFixed(2)} Kg`;
+    } else {
+      soldTd.innerText = `${Number(entry.qty.toFixed(2))} pcs`;
+    }
 
-      tr.appendChild(nameTd);
-      tr.appendChild(unitTd);
-      tr.appendChild(soldTd);
-      tbody.appendChild(tr);
+    tr.appendChild(timeTd);
+    tr.appendChild(nameTd);
+    tr.appendChild(unitTd);
+    tr.appendChild(soldTd);
+    tbody.appendChild(tr);
   });
 
   document.getElementById('total-income').innerText = formatCurrency(totalIncome);
