@@ -2176,6 +2176,50 @@ function openReceiptModal(saleObj = null) {
     if (receiptModalActions) receiptModalActions.style.display = 'none';
     if (receiptSaveBtn) receiptSaveBtn.style.display = 'none';
     if (cashierEl) cashierEl.innerText = 'Cashier: ' + (saleObj.cashier || 'Unknown');
+
+    // Remove any previously-injected lending info row
+    const oldLendingInfoRow = document.getElementById('receipt-lending-info-row');
+    if (oldLendingInfoRow) oldLendingInfoRow.remove();
+
+    // If this was a partial payment, show the lending details below Change
+    if (saleObj.partialPayment) {
+      const balanceDue = Number(saleObj.balanceDue || 0);
+      const borrower = saleObj.borrowerName || 'Customer';
+      const lendingInfoRow = document.createElement('div');
+      lendingInfoRow.id = 'receipt-lending-info-row';
+      lendingInfoRow.className = 'receipt-total-row';
+
+      if (saleObj.lendingFullyPaid) {
+        // Lending has been fully paid — show combined payment breakdown
+        lendingInfoRow.style.cssText = 'color:#27ae60;font-weight:700;margin-top:6px;border-top:1px dashed #ccc;padding-top:6px';
+        lendingInfoRow.innerHTML =
+          `<span>&#10003; Lending Fully Paid (${borrower})</span><span>+${formatCurrency(balanceDue)}</span>`;
+
+        // Also inject a combined total row
+        const oldCombinedRow = document.getElementById('receipt-combined-total-row');
+        if (oldCombinedRow) oldCombinedRow.remove();
+        const combinedRow = document.createElement('div');
+        combinedRow.id = 'receipt-combined-total-row';
+        combinedRow.className = 'receipt-total-row';
+        combinedRow.style.cssText = 'font-weight:800;font-size:15px;margin-top:4px';
+        combinedRow.innerHTML = `<span>TOTAL RECEIVED</span><span>${formatCurrency(Number(saleObj.total || 0))}</span>`;
+        lendingInfoRow.after(combinedRow);
+      } else {
+        // Lending still outstanding
+        lendingInfoRow.style.cssText = 'color:var(--danger,#e74c3c);font-weight:700;margin-top:6px;border-top:1px dashed #ccc;padding-top:6px';
+        lendingInfoRow.innerHTML =
+          `<span>On Lending (${borrower})</span><span>${formatCurrency(balanceDue)}</span>`;
+        // Remove combined row if present
+        const oldCombinedRow = document.getElementById('receipt-combined-total-row');
+        if (oldCombinedRow) oldCombinedRow.remove();
+      }
+
+      changeEl.parentElement.after(lendingInfoRow);
+    } else {
+      // Not a partial payment — ensure combined row is removed
+      const oldCombinedRow = document.getElementById('receipt-combined-total-row');
+      if (oldCombinedRow) oldCombinedRow.remove();
+    }
   } else {
 
     const mainCash = Number(document.getElementById('cash').value) || 0;
@@ -2232,6 +2276,10 @@ function closeReceiptModal() {
   // Clean up partial payment state
   const oldPartialRow = document.getElementById('receipt-partial-row');
   if (oldPartialRow) oldPartialRow.remove();
+  const oldLendingInfoRow = document.getElementById('receipt-lending-info-row');
+  if (oldLendingInfoRow) oldLendingInfoRow.remove();
+  const oldCombinedRow = document.getElementById('receipt-combined-total-row');
+  if (oldCombinedRow) oldCombinedRow.remove();
   _partialPaymentCustomer = null;
   _partialPaymentBalance = 0;
 
@@ -3274,7 +3322,10 @@ async function loadSalesHistory() {
     if (rangeEnd   && saleTs > rangeEnd)   return;
 
     count += 1;
-    totalIncome += Number(s.total || 0);
+    // For partial payment sales, only the cash actually received counts as income here;
+    // the lending balance will be counted separately when it is paid back.
+    const isPartialSale = !!s.partialPayment;
+    totalIncome += isPartialSale ? Number(s.cash || 0) : Number(s.total || 0);
 
     const li = document.createElement('li');
     li.style.padding = '8px';
@@ -3283,7 +3334,15 @@ async function loadSalesHistory() {
     const itemCount = (s.items || []).length;
 
     const leftDiv = document.createElement('div');
-    leftDiv.innerHTML = `<strong>${ts.toLocaleString()}</strong><div style="color:#666">${itemCount} items - Cashier: ${s.cashier || 'Unknown'}</div>`;
+    let lendingBadgeHtml = '';
+    if (isPartialSale) {
+      if (s.lendingFullyPaid) {
+        lendingBadgeHtml = ` <span style="background:#27ae60;color:#fff;font-size:11px;padding:2px 7px;border-radius:10px;font-weight:700;vertical-align:middle">LENDING PAID</span>`;
+      } else {
+        lendingBadgeHtml = ` <span style="background:var(--danger,#e74c3c);color:#fff;font-size:11px;padding:2px 7px;border-radius:10px;font-weight:700;vertical-align:middle">LENDING</span>`;
+      }
+    }
+    leftDiv.innerHTML = `<strong>${ts.toLocaleString()}${lendingBadgeHtml}</strong><div style="color:#666">${itemCount} items - Cashier: ${s.cashier || 'Unknown'}${isPartialSale ? ` — Borrower: <strong>${s.borrowerName || ''}</strong>` : ''}</div>`;
 
     const rightDiv = document.createElement('div');
     rightDiv.style.display = 'flex';
@@ -3291,7 +3350,15 @@ async function loadSalesHistory() {
     rightDiv.style.gap = '8px';
 
     const totalStrong = document.createElement('strong');
-    totalStrong.innerText = formatCurrency(s.total);
+    if (isPartialSale && s.lendingFullyPaid) {
+      // Show combined: cash paid + lending paid = full total
+      totalStrong.innerHTML = `${formatCurrency(s.cash || 0)} <span style="color:#888;font-size:12px;font-weight:400">+${formatCurrency(s.balanceDue || 0)}</span> = ${formatCurrency(s.total)}`;
+    } else if (isPartialSale) {
+      // Show only cash paid, lending balance still outstanding
+      totalStrong.innerHTML = `${formatCurrency(s.cash || 0)} <span style="color:var(--danger,#e74c3c);font-size:12px;font-weight:400">(+${formatCurrency(s.balanceDue || 0)} lending)</span>`;
+    } else {
+      totalStrong.innerText = formatCurrency(s.total);
+    }
     rightDiv.appendChild(totalStrong);
 
     if (currentUserRole === 'admin') {
@@ -5726,6 +5793,23 @@ async function processPayment(borrowerName, amount, isFull, selectedItems = []) 
       await safeWrite('update', 'lendings', update.data, update.docId);
     }
 
+    // When the borrower fully pays off their lending, mark the original partial-payment
+    // sale(s) so the receipt history can automatically show the combined total.
+    if (isFull) {
+      try {
+        const partialSalesSnap = await getDocs(
+          query(collection(db, 'sales'), where('borrowerName', '==', borrowerName))
+        );
+        for (const saleDocSnap of partialSalesSnap.docs) {
+          const sd = saleDocSnap.data();
+          if (sd.partialPayment && !sd.lendingFullyPaid) {
+            await safeWrite('update', 'sales', { lendingFullyPaid: true }, saleDocSnap.id);
+          }
+        }
+      } catch (e) {
+        console.warn('Could not update lendingFullyPaid on original sale(s):', e);
+      }
+    }
 
     // Use the original lending date so the payment income falls on the day items were taken,
     // not the day cash was collected — prevents it from showing up in a different day's totals.
