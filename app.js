@@ -4797,6 +4797,8 @@ async function openCustomerView() {
     });
 
     _cvActiveCategory = 'All';
+    const searchEl = document.getElementById('customer-view-search');
+    if (searchEl) { searchEl.value = ''; searchEl.oninput = () => renderCustomerViewProducts(); }
     renderCustomerViewCategories();
     renderCustomerViewProducts();
   } catch (err) {
@@ -4810,20 +4812,20 @@ function renderCustomerViewCategories() {
   if (!catsEl) return;
   catsEl.innerHTML = '';
 
-  const all = document.createElement('button');
-  all.className = 'category-btn' + (_cvActiveCategory === 'All' ? ' active' : '');
-  all.textContent = 'All';
-  all.onclick = () => { _cvActiveCategory = 'All'; renderCustomerViewCategories(); renderCustomerViewProducts(); };
-  catsEl.appendChild(all);
+  const allOpt = document.createElement('option');
+  allOpt.value = 'All';
+  allOpt.textContent = 'All Categories';
+  catsEl.appendChild(allOpt);
 
   _cvCategories.forEach(cat => {
-    const btn = document.createElement('button');
-    btn.className = 'category-btn' + (_cvActiveCategory === cat.name ? ' active' : '');
-    btn.textContent = cat.name;
-    if (cat.color) { btn.style.background = cat.color; btn.style.borderColor = cat.color; btn.style.color = '#fff'; }
-    btn.onclick = () => { _cvActiveCategory = cat.name; renderCustomerViewCategories(); renderCustomerViewProducts(); };
-    catsEl.appendChild(btn);
+    const opt = document.createElement('option');
+    opt.value = cat.name;
+    opt.textContent = cat.name;
+    catsEl.appendChild(opt);
   });
+
+  catsEl.value = _cvActiveCategory;
+  catsEl.onchange = () => { _cvActiveCategory = catsEl.value; renderCustomerViewProducts(); };
 }
 
 function renderCustomerViewProducts() {
@@ -4831,9 +4833,19 @@ function renderCustomerViewProducts() {
   if (!grid) return;
   grid.innerHTML = '';
 
-  const filtered = _cvActiveCategory === 'All'
+  const searchEl = document.getElementById('customer-view-search');
+  const query = searchEl ? searchEl.value.trim().toLowerCase() : '';
+
+  let filtered = _cvActiveCategory === 'All'
     ? _cvProducts
     : _cvProducts.filter(p => p.category === _cvActiveCategory);
+
+  if (query) {
+    filtered = filtered.filter(p =>
+      (p.name || '').toLowerCase().includes(query) ||
+      (p.category || '').toLowerCase().includes(query)
+    );
+  }
 
   if (!filtered.length) {
     grid.innerHTML = '<div class="cv-empty">No products found.</div>';
