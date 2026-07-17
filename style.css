@@ -5588,7 +5588,8 @@ body.sidebar-collapsed .topbar {
   color: var(--muted);
   white-space: nowrap;
 }
-.note-copy-btn {
+.note-copy-btn,
+.note-edit-btn {
   background: none;
   border: none;
   cursor: pointer;
@@ -5602,6 +5603,55 @@ body.sidebar-collapsed .topbar {
 }
 .note-copy-btn:hover { opacity: 1; color: var(--primary); }
 .note-copy-btn--copied { opacity: 1; color: #16a34a; }
+.note-edit-btn:hover { opacity: 1; color: #f59e0b; }
+.note-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 6px 0 4px;
+}
+.note-edit-title {
+  font-size: 13px;
+  font-weight: 600;
+  width: 100%;
+  box-sizing: border-box;
+}
+.note-edit-body {
+  font-size: 14px;
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  line-height: 1.5;
+}
+.note-edit-actions {
+  display: flex;
+  gap: 6px;
+}
+.note-save-btn {
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 5px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter 0.15s;
+}
+.note-save-btn:hover { filter: brightness(1.1); }
+.note-cancel-btn {
+  background: var(--border);
+  color: var(--text);
+  border: none;
+  border-radius: 6px;
+  padding: 5px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  opacity: 0.75;
+  transition: opacity 0.15s;
+}
+.note-cancel-btn:hover { opacity: 1; }
 .note-delete-btn {
   background: none;
   border: none;

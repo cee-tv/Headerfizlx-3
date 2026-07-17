@@ -6631,7 +6631,11 @@ function renderNotesFeed(snap) {
           <button class="note-copy-btn" title="Copy note">
             <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
           </button>
-          ${(isOwn || isAdmin) ? `<button class="note-delete-btn" data-id="${id}" title="Delete note">
+          ${(isOwn || isAdmin) ? `
+          <button class="note-edit-btn" title="Edit note">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <button class="note-delete-btn" data-id="${id}" title="Delete note">
             <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
           </button>` : ''}
         </div>
@@ -6654,6 +6658,48 @@ function renderNotesFeed(snap) {
             copyBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
           }, 1800);
         } catch { /* clipboard not available */ }
+      };
+    }
+
+    const editBtn = card.querySelector('.note-edit-btn');
+    if (editBtn) {
+      editBtn.onclick = () => {
+        // Replace title + body with inline edit form
+        const titleEl = card.querySelector('.note-title');
+        const bodyEl = card.querySelector('.note-body');
+        if (card.querySelector('.note-edit-form')) return; // already editing
+
+        const titleVal = titleEl ? titleEl.textContent : '';
+        const bodyVal = d.text || '';
+
+        const form = document.createElement('div');
+        form.className = 'note-edit-form';
+        form.innerHTML = `
+          <input class="note-edit-title" type="text" placeholder="Title…" maxlength="120" value="${escHtml(titleVal)}" />
+          <textarea class="note-edit-body" rows="3" maxlength="1000">${escHtml(bodyVal)}</textarea>
+          <div class="note-edit-actions">
+            <button class="note-save-btn">Save</button>
+            <button class="note-cancel-btn">Cancel</button>
+          </div>
+        `;
+
+        if (titleEl) titleEl.replaceWith(form);
+        else bodyEl.before(form);
+        if (bodyEl) bodyEl.style.display = 'none';
+
+        form.querySelector('.note-cancel-btn').onclick = () => {
+          form.remove();
+          if (bodyEl) bodyEl.style.display = '';
+        };
+
+        form.querySelector('.note-save-btn').onclick = async () => {
+          const newTitle = form.querySelector('.note-edit-title').value.trim();
+          const newText = form.querySelector('.note-edit-body').value.trim();
+          if (!newText) return;
+          try {
+            await updateDoc(doc(db, 'notes', id), { title: newTitle, text: newText });
+          } catch (err) { alert('Could not save note.'); }
+        };
       };
     }
 
