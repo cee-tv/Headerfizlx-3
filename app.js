@@ -626,7 +626,7 @@ async function endCurrentShift() {
     const q = query(collection(db, 'sales'), where('shiftId', '==', currentShift.id));
     const qSnap = await getDocs(q);
     let sum = 0;
-    qSnap.forEach(snap => { const s = snap.data() || {}; sum += Number(s.total || 0); });
+    qSnap.forEach(snap => { const s = snap.data() || {}; sum += s.partialPayment ? Number(s.cash || 0) : Number(s.total || 0); });
 
 
     await safeWrite('update', 'shifts', { totalIncome: Number(sum.toFixed(2)), endTime: new Date(), status: 'closed' }, currentShift.id);
@@ -2417,7 +2417,7 @@ if (receiptSave) receiptSave.onclick = async () => {
     }
 
     try {
-      const newTotal = Number(((Number(currentShift.totalIncome || currentShift.totalSales || 0) + saleDoc.total)).toFixed(2));
+      const newTotal = Number(((Number(currentShift.totalIncome || currentShift.totalSales || 0) + (isPartialPayment ? saleDoc.cash : saleDoc.total))).toFixed(2));
       await safeWrite('update', 'shifts', { totalIncome: newTotal }, currentShift.id);
       currentShift.totalIncome = newTotal;
     } catch (e) { console.error('Failed to update shift total', e); }
@@ -2530,7 +2530,7 @@ async function loadSalesSummary() {
     const s = docSnap.data();
     const ts = s.timestamp && s.timestamp.toDate ? s.timestamp.toDate() : (s.timestamp ? new Date(s.timestamp) : null);
     if (!ts || ts < todayStart || ts > todayEnd) return; // skip other days
-    totalIncome += Number(s.total || 0);
+    totalIncome += s.partialPayment ? Number(s.cash || 0) : Number(s.total || 0);
     (s.items || []).forEach(it => {
       salesRows.push({ ts, name: it.name, unit: it.unit, qty: Number(it.qty || 0), weight: Number(it.weight || 0) });
     });
@@ -2883,7 +2883,7 @@ async function loadRemits() {
       const s = docSnap.data();
       const ts = s.timestamp && s.timestamp.toDate ? s.timestamp.toDate() : new Date(s.timestamp);
       const day = ts.toDateString();
-      const amount = Number(s.total || 0);
+      const amount = s.partialPayment ? Number(s.cash || 0) : Number(s.total || 0);
       totalCapital += amount;
       if (!dailyTotals[day]) dailyTotals[day] = 0;
       dailyTotals[day] += amount;
@@ -3024,7 +3024,7 @@ async function loadFinanceIncome(queryRange) {
     const q = query(collection(db, 'sales'), ...queryRange);
     const qSnap = await getDocs(q);
     let totalIncome = 0;
-    qSnap.forEach(docSnap => { totalIncome += Number(docSnap.data().total || 0); });
+    qSnap.forEach(docSnap => { const _s = docSnap.data(); totalIncome += _s.partialPayment ? Number(_s.cash || 0) : Number(_s.total || 0); });
     totalEl.innerText = formatCurrency(totalIncome);
   } catch (err) {
     console.error('Failed to load finance income', err);
@@ -3050,7 +3050,7 @@ async function loadFinanceRemits(queryRange) {
       const s = docSnap.data();
       const ts = s.timestamp && s.timestamp.toDate ? s.timestamp.toDate() : new Date(s.timestamp);
       const day = ts.toDateString();
-      const amount = Number(s.total || 0);
+      const amount = s.partialPayment ? Number(s.cash || 0) : Number(s.total || 0);
       totalCapital += amount;
       if (!dailyTotals[day]) dailyTotals[day] = 0;
       dailyTotals[day] += amount;
