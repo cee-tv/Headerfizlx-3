@@ -2401,21 +2401,18 @@ async function loadSalesSummary() {
     return;
   }
 
-  const todayKey = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
   const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
   const todayEnd = new Date(); todayEnd.setHours(23, 59, 59, 999);
 
-  const q = query(
-    collection(db, 'sales'),
-    where('shiftId', '==', currentShift.id),
-    where('timestamp', '>=', todayStart),
-    where('timestamp', '<=', todayEnd)
-  );
+  // Single-field query (no composite index needed); filter today client-side
+  const q = query(collection(db, 'sales'), where('shiftId', '==', currentShift.id));
   const qSnap = await getDocs(q);
 
   const itemsSummary = {};
   qSnap.forEach(docSnap => {
     const s = docSnap.data();
+    const ts = s.timestamp && s.timestamp.toDate ? s.timestamp.toDate() : (s.timestamp ? new Date(s.timestamp) : null);
+    if (!ts || ts < todayStart || ts > todayEnd) return; // skip other days
     totalIncome += Number(s.total || 0);
     (s.items || []).forEach(it => {
       const key = `${it.name}||${it.unit}`;
