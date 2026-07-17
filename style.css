@@ -5615,6 +5615,13 @@ body.sidebar-collapsed .topbar {
   transition: opacity var(--transition-fast), color var(--transition-fast);
 }
 .note-delete-btn:hover { opacity: 1; color: var(--danger); }
+.notes-title-input {
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
 .note-title {
   font-size: 13px;
   font-weight: 700;

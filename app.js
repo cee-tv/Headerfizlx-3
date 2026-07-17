@@ -6569,20 +6569,24 @@ function teardownNotesPage() {
 
 async function submitNote() {
   const input = document.getElementById('notes-input');
+  const titleInput = document.getElementById('notes-title-input');
   const submitBtn = document.getElementById('notes-submit-btn');
   if (!input) return;
   const text = input.value.trim();
+  const title = titleInput ? titleInput.value.trim() : '';
   if (!text) return;
 
   submitBtn && (submitBtn.disabled = true);
   try {
     await addDoc(collection(db, 'notes'), {
+      title,
       text,
       author: currentEmployeeName || currentUsername || 'Unknown',
       role: currentUserRole || 'cashier',
       createdAt: serverTimestamp()
     });
     input.value = '';
+    if (titleInput) titleInput.value = '';
     const charCount = document.getElementById('notes-char-count');
     if (charCount) charCount.textContent = '0 / 1000';
   } catch (err) {
@@ -6632,7 +6636,7 @@ function renderNotesFeed(snap) {
           </button>` : ''}
         </div>
       </div>
-      <div class="note-title">${escHtml(d.author || 'Unknown')}</div>
+      ${d.title ? `<div class="note-title">${escHtml(d.title)}</div>` : ''}
       <div class="note-body">${escHtml(d.text || '').replace(/\n/g, '<br>')}</div>
     `;
 
