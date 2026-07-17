@@ -878,6 +878,26 @@
     </div>
   </div>
 
+  <!-- Partial Payment Modal -->
+  <div id="partial-payment-modal" class="modal hidden" aria-hidden="true">
+    <div class="modal-content" style="max-width:360px">
+      <h4 style="margin:0 0 4px">⚠️ Cash Not Enough</h4>
+      <p style="margin:0 0 12px;font-size:13px;color:var(--muted)">The customer's cash is short. Record the balance as a lending entry.</p>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-size:13px;font-weight:600">Balance Due:</span>
+        <span id="partial-balance-display" style="font-size:15px;font-weight:700;color:var(--danger)">PHP 0.00</span>
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">Customer Name <span style="color:var(--danger)">*</span></label>
+        <input id="partial-customer-name" type="text" placeholder="Enter customer name" style="width:100%;box-sizing:border-box" />
+      </div>
+      <div class="modal-actions" style="display:flex;gap:8px">
+        <button id="partial-payment-confirm" class="checkout-btn" style="flex:1">Proceed &amp; Record Balance</button>
+        <button id="partial-payment-cancel" class="clear-btn" style="flex:1">Cancel</button>
+      </div>
+    </div>
+  </div>
+
   
   <div id="borrower-modal" class="modal hidden" aria-hidden="true">
     <div class="modal-content">

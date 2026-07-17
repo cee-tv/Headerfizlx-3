@@ -1761,6 +1761,42 @@ function setQty(index, value) {
 }
 
 
+// --- Partial Payment state ---
+let _partialPaymentCustomer = null;
+let _partialPaymentBalance = 0;
+
+function openPartialPaymentModal(balance) {
+  _partialPaymentBalance = balance;
+  const modal = document.getElementById('partial-payment-modal');
+  const balanceEl = document.getElementById('partial-balance-display');
+  const nameInput = document.getElementById('partial-customer-name');
+  if (balanceEl) balanceEl.innerText = formatCurrency(balance);
+  if (nameInput) nameInput.value = '';
+  if (modal) { modal.classList.remove('hidden'); modal.setAttribute('aria-hidden', 'false'); if (nameInput) setTimeout(() => nameInput.focus(), 50); }
+}
+
+function closePartialPaymentModal() {
+  const modal = document.getElementById('partial-payment-modal');
+  if (modal) { modal.classList.add('hidden'); modal.setAttribute('aria-hidden', 'true'); }
+}
+
+const partialConfirmBtn = document.getElementById('partial-payment-confirm');
+if (partialConfirmBtn) partialConfirmBtn.onclick = () => {
+  const nameInput = document.getElementById('partial-customer-name');
+  const name = (nameInput ? nameInput.value.trim() : '');
+  if (!name) { nameInput && nameInput.focus(); alert('Please enter the customer name.'); return; }
+  _partialPaymentCustomer = name;
+  closePartialPaymentModal();
+  openReceiptModal();
+};
+
+const partialCancelBtn = document.getElementById('partial-payment-cancel');
+if (partialCancelBtn) partialCancelBtn.onclick = () => {
+  _partialPaymentCustomer = null;
+  _partialPaymentBalance = 0;
+  closePartialPaymentModal();
+};
+
 const checkoutBtnEl = document.getElementById("checkout");
 if (checkoutBtnEl) checkoutBtnEl.onclick = () => {
 
@@ -1775,9 +1811,11 @@ if (checkoutBtnEl) checkoutBtnEl.onclick = () => {
   const total = Number(Math.max(0, (Number(currentSubtotal || 0) - discount)).toFixed(2));
   const cash = Number(document.getElementById('cash').value) || 0;
   if (cash < total) {
-    showErrorModal("Cannot proceed to checkout. Cash Payment isn't enough");
+    openPartialPaymentModal(Number((total - cash).toFixed(2)));
     return;
   }
+  _partialPaymentCustomer = null;
+  _partialPaymentBalance = 0;
   openReceiptModal();
 }
 
@@ -2090,14 +2128,32 @@ function openReceiptModal(saleObj = null) {
     if (receiptSaveBtn) receiptSaveBtn.style.display = '';
 
 
-    cashInput.oninput = () => {
-      const cash = Number(cashInput.value) || 0;
-      const change = cash - totalAfter;
-      changeEl.innerText = formatCurrency(change);
-    };
+    // Remove any previously-injected partial payment row
+    const oldPartialRow = document.getElementById('receipt-partial-row');
+    if (oldPartialRow) oldPartialRow.remove();
 
-    const initialCash = Number(cashInput.value) || 0;
-    changeEl.innerText = formatCurrency(initialCash - totalAfter);
+    if (_partialPaymentCustomer) {
+      // Partial payment mode: cash is locked to what was entered, show balance due row
+      cashInput.disabled = true;
+      changeEl.innerText = formatCurrency(0);
+
+      const balanceDue = Number((totalAfter - (Number(cashInput.value) || 0)).toFixed(2));
+      const partialRow = document.createElement('div');
+      partialRow.id = 'receipt-partial-row';
+      partialRow.className = 'receipt-total-row';
+      partialRow.style.cssText = 'color:var(--danger);font-weight:700;margin-top:4px';
+      partialRow.innerHTML = `<span>Balance (${_partialPaymentCustomer})</span><span>${formatCurrency(balanceDue)}</span>`;
+      changeEl.parentElement.after(partialRow);
+    } else {
+      cashInput.oninput = () => {
+        const cash = Number(cashInput.value) || 0;
+        const change = cash - totalAfter;
+        changeEl.innerText = formatCurrency(change);
+      };
+
+      const initialCash = Number(cashInput.value) || 0;
+      changeEl.innerText = formatCurrency(initialCash - totalAfter);
+    }
     if (cashierEl) cashierEl.innerText = 'Cashier: ' + (currentEmployeeName || currentUsername || 'Unknown');
   }
 
@@ -2113,9 +2169,14 @@ function closeReceiptModal() {
   if (cashInput) { cashInput.disabled = false; cashInput.value = ''; }
   if (receiptSaveBtn) receiptSaveBtn.style.display = '';
 
-
   const receiptDiscount = document.getElementById('receipt-discount');
   if (receiptDiscount) receiptDiscount.innerText = formatCurrency(0);
+
+  // Clean up partial payment state
+  const oldPartialRow = document.getElementById('receipt-partial-row');
+  if (oldPartialRow) oldPartialRow.remove();
+  _partialPaymentCustomer = null;
+  _partialPaymentBalance = 0;
 
   modal.classList.add('hidden');
   modal.setAttribute('aria-hidden', 'true');
@@ -2192,11 +2253,16 @@ if (receiptSave) receiptSave.onclick = async () => {
 
 
   const receiptCash = Number(document.getElementById('receipt-cash').value) || 0;
-  if (receiptCash < total) {
+  const isPartialPayment = !!_partialPaymentCustomer;
+  if (!isPartialPayment && receiptCash < total) {
     showErrorModal("Cannot proceed to checkout. Cash Payment isn't enough");
     resetSaveBtn();
     return;
   }
+
+  const actualCashPaid = isPartialPayment ? receiptCash : cash;
+  const actualChange = isPartialPayment ? 0 : Number((cash - total).toFixed(2));
+  const balanceDue = isPartialPayment ? Number((total - actualCashPaid).toFixed(2)) : 0;
 
   const saleDoc = {
     timestamp: new Date(),
@@ -2205,13 +2271,33 @@ if (receiptSave) receiptSave.onclick = async () => {
     subtotal: Number(subtotal.toFixed(2)),
     discount: Number(discountVal.toFixed(2)),
     total: Number(total.toFixed(2)),
-    cash: Number(cash.toFixed(2)),
-    change: Number(change.toFixed(2)),
+    cash: Number(actualCashPaid.toFixed(2)),
+    change: Number(actualChange.toFixed(2)),
     cashier: currentEmployeeName || currentUsername || 'Unknown'
   };
+  if (isPartialPayment) {
+    saleDoc.partialPayment = true;
+    saleDoc.balanceDue = balanceDue;
+    saleDoc.borrowerName = _partialPaymentCustomer;
+  }
 
   try {
     await safeWrite('add', 'sales', saleDoc);
+
+    // If partial payment, record the balance as a lending entry
+    if (isPartialPayment && balanceDue > 0) {
+      const lendingDoc = {
+        borrowerName: _partialPaymentCustomer,
+        items: itemsForSave.map(it => ({ ...it, total: it.lineTotal || 0 })),
+        total: balanceDue,
+        timestamp: new Date(),
+        returned: false,
+        note: 'Balance from partial payment'
+      };
+      try {
+        await safeWrite('add', 'lendings', lendingDoc);
+      } catch (e) { console.error('Failed to save lending for partial payment', e); }
+    }
 
     try {
       const newTotal = Number(((Number(currentShift.totalIncome || currentShift.totalSales || 0) + saleDoc.total)).toFixed(2));
@@ -2241,6 +2327,10 @@ if (receiptSave) receiptSave.onclick = async () => {
 
 
     playSfx('chaching');
+    const partialCustomerName = _partialPaymentCustomer;
+    const partialBalance = balanceDue;
+    _partialPaymentCustomer = null;
+    _partialPaymentBalance = 0;
     cart = [];
     renderCart();
     closeReceiptModal();
@@ -2250,7 +2340,11 @@ if (receiptSave) receiptSave.onclick = async () => {
 
     const discountInput = document.getElementById('discount'); if (discountInput) discountInput.value = '';
     const cashInput = document.getElementById('cash'); if (cashInput) cashInput.value = '';
-    alert('Sale recorded successfully!');
+    if (partialCustomerName && partialBalance > 0) {
+      alert(`Sale recorded!\nBalance of ${formatCurrency(partialBalance)} has been recorded as a lending entry for "${partialCustomerName}".`);
+    } else {
+      alert('Sale recorded successfully!');
+    }
 
     loadSalesSummary();
     loadSalesHistory();
