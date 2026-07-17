@@ -2051,6 +2051,7 @@ function openReceiptModal(saleObj = null) {
   const now = saleObj && saleObj.timestamp ? (saleObj.timestamp.toDate ? saleObj.timestamp.toDate() : new Date(saleObj.timestamp)) : new Date();
   datetime.innerText = now.toLocaleString();
 
+  const receiptModalActions = document.getElementById('receipt-modal-actions');
   if (saleObj) {
 
     const cash = Number(saleObj.cash) || 0;
@@ -2058,6 +2059,7 @@ function openReceiptModal(saleObj = null) {
     cashInput.value = cash ? cash.toFixed(2) : '';
     cashInput.disabled = true;
     changeEl.innerText = formatCurrency(change);
+    if (receiptModalActions) receiptModalActions.style.display = 'none';
     if (receiptSaveBtn) receiptSaveBtn.style.display = 'none';
     if (cashierEl) cashierEl.innerText = 'Cashier: ' + (saleObj.cashier || 'Unknown');
   } else {
@@ -2065,6 +2067,7 @@ function openReceiptModal(saleObj = null) {
     const mainCash = Number(document.getElementById('cash').value) || 0;
     cashInput.value = mainCash ? mainCash.toFixed(2) : '';
     cashInput.disabled = false;
+    if (receiptModalActions) receiptModalActions.style.display = '';
     if (receiptSaveBtn) receiptSaveBtn.style.display = '';
 
 
