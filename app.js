@@ -2071,14 +2071,20 @@ if (notifModalClose && notifModal) {
     notifModal.setAttribute('aria-hidden', 'true');
   });
 }
-if (notifModal) {
-  notifModal.addEventListener('click', (e) => {
-    if (e.target === notifModal) {
-      notifModal.classList.add('hidden');
-      notifModal.setAttribute('aria-hidden', 'true');
-    }
+// ── Global: click outside any overlay → close all overlays ──────────────
+function closeAllModals() {
+  document.querySelectorAll('.modal, .customer-view-modal').forEach(el => {
+    el.classList.add('hidden');
+    el.setAttribute('aria-hidden', 'true');
   });
 }
+
+document.addEventListener('click', (e) => {
+  const target = e.target;
+  if (target.classList.contains('modal') || target.classList.contains('customer-view-modal')) {
+    closeAllModals();
+  }
+});
 
 
 function openReceiptModal(saleObj = null) {
