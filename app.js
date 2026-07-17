@@ -2465,8 +2465,8 @@ async function loadSalesSummary() {
     });
   });
 
-  // Sort chronologically ascending so earliest sales appear first
-  salesRows.sort((a, b) => a.ts.getTime() - b.ts.getTime());
+  // Sort descending so most recent sales appear first
+  salesRows.sort((a, b) => b.ts.getTime() - a.ts.getTime());
 
   const tbody = document.getElementById('items-sold-tbody');
   tbody.innerHTML = '';
