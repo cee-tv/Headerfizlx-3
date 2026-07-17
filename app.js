@@ -6616,15 +6616,11 @@ function renderNotesFeed(snap) {
     const dateStr = ts.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
     const timeStr = ts.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' });
 
-    const roleBadgeClass = d.role === 'admin' ? 'note-role-admin' : 'note-role-cashier';
-    const roleLabel = d.role === 'admin' ? 'Admin' : 'Employee';
-
     card.innerHTML = `
       <div class="note-header">
         <div class="note-author-row">
           <span class="note-avatar">${(d.author || '?')[0].toUpperCase()}</span>
           <span class="note-author">${escHtml(d.author || 'Unknown')}</span>
-          <span class="note-role-badge ${roleBadgeClass}">${roleLabel}</span>
         </div>
         <div class="note-meta">
           <span class="note-time">${dateStr} · ${timeStr}</span>
@@ -6636,6 +6632,7 @@ function renderNotesFeed(snap) {
           </button>` : ''}
         </div>
       </div>
+      <div class="note-title">${escHtml(d.author || 'Unknown')}</div>
       <div class="note-body">${escHtml(d.text || '').replace(/\n/g, '<br>')}</div>
     `;
 
