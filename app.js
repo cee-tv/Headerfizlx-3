@@ -4361,6 +4361,168 @@ if (clearSalesBtn) clearSalesBtn.onclick = async () => {
   if (document.getElementById('icePage')?.style.display !== 'none') loadIcePage();
 };
 
+// ── Admin: Clear Records by Period ─────────────────────────────────────────
+(function setupAdminClearByPeriod() {
+  let _adminClearPeriod = 'day';
+
+  // Returns { startDate: Date, endDate: Date, label: string }
+  function getClearRange(period) {
+    const now = new Date();
+    let startDate, endDate, label;
+    if (period === 'day') {
+      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+      endDate   = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+      label = 'Today (' + startDate.toLocaleDateString() + ')';
+    } else if (period === 'week') {
+      const day = now.getDay(); // 0=Sun
+      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day, 0, 0, 0, 0);
+      endDate   = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + 6, 23, 59, 59, 999);
+      label = 'This Week (' + startDate.toLocaleDateString() + ' – ' + endDate.toLocaleDateString() + ')';
+    } else { // month
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+      endDate   = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+      label = 'This Month (' + startDate.toLocaleDateString('default', { month: 'long', year: 'numeric' }) + ')';
+    }
+    return { startDate, endDate, label };
+  }
+
+  // Returns YYYY-MM-DD strings for start and end of the period
+  function getClearDateStrRange(period) {
+    const { startDate, endDate } = getClearRange(period);
+    const pad = n => String(n).padStart(2, '0');
+    const toStr = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+    return { startStr: toStr(startDate), endStr: toStr(endDate) };
+  }
+
+  function updatePeriodLabel() {
+    const { label } = getClearRange(_adminClearPeriod);
+    const el = document.getElementById('admin-clear-period-label');
+    if (el) el.textContent = 'Selected period: ' + label;
+  }
+
+  // Period tab buttons
+  document.querySelectorAll('.admin-clear-period').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.admin-clear-period').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      _adminClearPeriod = btn.dataset.period;
+      updatePeriodLabel();
+    });
+  });
+  updatePeriodLabel();
+
+  // Helper: delete docs from a collection where a Firestore Timestamp field is in range
+  async function clearByTimestampField(collName, startDate, endDate) {
+    const snap = await getDocs(collection(db, collName));
+    const toDelete = snap.docs.filter(d => {
+      const raw = d.data().timestamp;
+      if (!raw) return false;
+      const ts = raw.toDate ? raw.toDate() : new Date(raw);
+      return ts >= startDate && ts <= endDate;
+    });
+    await Promise.all(toDelete.map(d => deleteDoc(doc(db, collName, d.id))));
+    return toDelete.length;
+  }
+
+  // Helper: delete docs from a collection where a date string field (YYYY-MM-DD) is in range
+  async function clearByDateStringField(collName, startStr, endStr) {
+    const snap = await getDocs(collection(db, collName));
+    const toDelete = snap.docs.filter(d => {
+      const dateStr = d.data().date;
+      return dateStr && dateStr >= startStr && dateStr <= endStr;
+    });
+    await Promise.all(toDelete.map(d => deleteDoc(doc(db, collName, d.id))));
+    return toDelete.length;
+  }
+
+  // Sales & Receipts
+  const clearSalesPeriodBtn = document.getElementById('admin-clear-sales-period');
+  if (clearSalesPeriodBtn) clearSalesPeriodBtn.onclick = async () => {
+    const { startDate, endDate, label } = getClearRange(_adminClearPeriod);
+    const confirmText = prompt(`Type DELETE to clear Sales & Receipts for ${label}`);
+    if (confirmText !== 'DELETE') return alert('Cancelled');
+    clearSalesPeriodBtn.disabled = true;
+    clearSalesPeriodBtn.textContent = 'Clearing...';
+    try {
+      const count = await clearByTimestampField('sales', startDate, endDate);
+      alert(`Cleared ${count} sales record(s) for ${label}`);
+      loadSalesSummary();
+      loadSalesHistory();
+    } catch (err) {
+      console.error('Clear sales by period failed', err);
+      alert('Failed to clear sales. Check console for details.');
+    } finally {
+      clearSalesPeriodBtn.disabled = false;
+      clearSalesPeriodBtn.textContent = 'Clear Sales';
+    }
+  };
+
+  // eLoading
+  const clearEloadingPeriodBtn = document.getElementById('admin-clear-eloading-period');
+  if (clearEloadingPeriodBtn) clearEloadingPeriodBtn.onclick = async () => {
+    const { label } = getClearRange(_adminClearPeriod);
+    const { startStr, endStr } = getClearDateStrRange(_adminClearPeriod);
+    const confirmText = prompt(`Type DELETE to clear eLoading records for ${label}`);
+    if (confirmText !== 'DELETE') return alert('Cancelled');
+    clearEloadingPeriodBtn.disabled = true;
+    clearEloadingPeriodBtn.textContent = 'Clearing...';
+    try {
+      const count = await clearByDateStringField('eloading', startStr, endStr);
+      alert(`Cleared ${count} eLoading record(s) for ${label}`);
+      if (document.getElementById('eloadingPage')?.style.display !== 'none') loadEloadingPage();
+    } catch (err) {
+      console.error('Clear eloading by period failed', err);
+      alert('Failed to clear eLoading. Check console for details.');
+    } finally {
+      clearEloadingPeriodBtn.disabled = false;
+      clearEloadingPeriodBtn.textContent = 'Clear eLoading';
+    }
+  };
+
+  // Ice Sales
+  const clearIcePeriodBtn = document.getElementById('admin-clear-ice-period');
+  if (clearIcePeriodBtn) clearIcePeriodBtn.onclick = async () => {
+    const { label } = getClearRange(_adminClearPeriod);
+    const { startStr, endStr } = getClearDateStrRange(_adminClearPeriod);
+    const confirmText = prompt(`Type DELETE to clear Ice Sales for ${label}`);
+    if (confirmText !== 'DELETE') return alert('Cancelled');
+    clearIcePeriodBtn.disabled = true;
+    clearIcePeriodBtn.textContent = 'Clearing...';
+    try {
+      const count = await clearByDateStringField('icesales', startStr, endStr);
+      alert(`Cleared ${count} Ice Sales record(s) for ${label}`);
+      if (document.getElementById('icePage')?.style.display !== 'none') loadIcePage();
+    } catch (err) {
+      console.error('Clear ice sales by period failed', err);
+      alert('Failed to clear Ice Sales. Check console for details.');
+    } finally {
+      clearIcePeriodBtn.disabled = false;
+      clearIcePeriodBtn.textContent = 'Clear Ice Sales';
+    }
+  };
+
+  // Lending
+  const clearLendingPeriodBtn = document.getElementById('admin-clear-lending-period');
+  if (clearLendingPeriodBtn) clearLendingPeriodBtn.onclick = async () => {
+    const { startDate, endDate, label } = getClearRange(_adminClearPeriod);
+    const confirmText = prompt(`Type DELETE to clear Lending records for ${label}`);
+    if (confirmText !== 'DELETE') return alert('Cancelled');
+    clearLendingPeriodBtn.disabled = true;
+    clearLendingPeriodBtn.textContent = 'Clearing...';
+    try {
+      const count = await clearByTimestampField('lendings', startDate, endDate);
+      alert(`Cleared ${count} Lending record(s) for ${label}`);
+      if (document.getElementById('lendingPage')?.style.display !== 'none') loadBorrowersList();
+    } catch (err) {
+      console.error('Clear lending by period failed', err);
+      alert('Failed to clear Lending. Check console for details.');
+    } finally {
+      clearLendingPeriodBtn.disabled = false;
+      clearLendingPeriodBtn.textContent = 'Clear Lending';
+    }
+  };
+})();
+
 
 const addProductBtn = document.getElementById('add-product-btn');
 const addProductModal = document.getElementById('add-product-modal');

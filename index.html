@@ -554,6 +554,47 @@
       </div>
       <div style="margin-top:12px;color:var(--muted)"><span id="admin-shift-info"></span></div>
 
+      <!-- Clear Records by Period -->
+      <div class="card" style="margin-top:16px">
+        <h4 style="margin:0 0 12px">Clear Records by Period</h4>
+        <div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="quick-btn admin-clear-period active" data-period="day">Today</button>
+          <button class="quick-btn admin-clear-period" data-period="week">This Week</button>
+          <button class="quick-btn admin-clear-period" data-period="month">This Month</button>
+        </div>
+        <div id="admin-clear-period-label" style="font-size:13px;color:var(--muted);margin-bottom:12px"></div>
+        <div class="admin-clear-grid">
+          <div class="admin-clear-row">
+            <div class="admin-clear-label">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:5px"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+              Sales &amp; Receipts
+            </div>
+            <button class="remove-btn admin-clear-btn" id="admin-clear-sales-period">Clear Sales</button>
+          </div>
+          <div class="admin-clear-row">
+            <div class="admin-clear-label">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:5px"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+              eLoading
+            </div>
+            <button class="remove-btn admin-clear-btn" id="admin-clear-eloading-period">Clear eLoading</button>
+          </div>
+          <div class="admin-clear-row">
+            <div class="admin-clear-label">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:5px"><line x1="12" y1="2" x2="12" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/><line x1="19.07" y1="4.93" x2="4.93" y2="19.07"/></svg>
+              Ice Sales
+            </div>
+            <button class="remove-btn admin-clear-btn" id="admin-clear-ice-period">Clear Ice Sales</button>
+          </div>
+          <div class="admin-clear-row">
+            <div class="admin-clear-label">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:5px"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              Lending
+            </div>
+            <button class="remove-btn admin-clear-btn" id="admin-clear-lending-period">Clear Lending</button>
+          </div>
+        </div>
+      </div>
+
       <div class="card" style="margin-top:12px">
         <h4>Cashier Shift History</h4>
         <div id="admin-cashier-list" style="display:flex;gap:8px;flex-wrap:wrap"></div>

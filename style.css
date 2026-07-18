@@ -1067,6 +1067,43 @@ input[type="number"] {
   flex-wrap: wrap
 }
 
+.admin-clear-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.admin-clear-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: var(--bg, #f7f8fa);
+  border-radius: 10px;
+  border: 1px solid var(--border, #e0e0e0);
+  gap: 10px;
+}
+
+.admin-clear-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text, #1a1a1a);
+  display: flex;
+  align-items: center;
+}
+
+.admin-clear-btn {
+  font-size: 13px;
+  padding: 6px 14px;
+  white-space: nowrap;
+}
+
+.admin-clear-period.active {
+  background: var(--primary, #3498db);
+  color: #fff;
+  border-color: var(--primary, #3498db);
+}
+
 
 .product-edit-row {
   display: flex;
