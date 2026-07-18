@@ -1895,7 +1895,7 @@ function isPageAllowedForRole(id) {
 
   if (currentUserRole === 'admin') return true;
 
-  if (currentUserRole === 'cashier') return id === 'salesPage' || id === 'receiptsPage' || id === 'cashierPage' || id === 'eloadingPage' || id === 'lendingPage' || id === 'notesPage';
+  if (currentUserRole === 'cashier') return id === 'salesPage' || id === 'receiptsPage' || id === 'cashierPage' || id === 'eloadingPage' || id === 'icePage' || id === 'lendingPage' || id === 'notesPage';
 
   if (id === 'financePage' || id === 'remitsPage' || id === 'profitsPage') return currentUserRole === 'admin';
   return false;
@@ -1934,7 +1934,7 @@ function showPage(id) {
   // Topbar page name
   const topbarPageName = document.getElementById('topbar-page-name');
   if (topbarPageName) {
-    const pageLabels = { salesPage: 'Sales', receiptsPage: 'Receipts', cashierPage: 'Cashier', productsPage: 'Stocks', lendingPage: 'Lending', financePage: 'Finance', remitsPage: 'Remits', profitsPage: 'Profits', adminPage: 'Admin', eloadingPage: 'eLoading', notesPage: 'Notes' };
+    const pageLabels = { salesPage: 'Sales', receiptsPage: 'Receipts', cashierPage: 'Cashier', productsPage: 'Stocks', lendingPage: 'Lending', financePage: 'Finance', remitsPage: 'Remits', profitsPage: 'Profits', adminPage: 'Admin', eloadingPage: 'eLoading', icePage: 'Ice Sales', notesPage: 'Notes' };
     topbarPageName.textContent = pageLabels[id] || id.replace('Page', '');
   }
 
@@ -1979,6 +1979,7 @@ function showPage(id) {
     loadBorrowersList();
   }
   if (id === 'eloadingPage') loadEloadingPage();
+  if (id === 'icePage') loadIcePage();
   if (id === 'notesPage') initNotesPage();
   else teardownNotesPage();
 }
@@ -4336,25 +4337,28 @@ async function exportPriceListDocx(sorted) {
 
 const clearSalesBtn = document.getElementById('clear-sales');
 if (clearSalesBtn) clearSalesBtn.onclick = async () => {
-  const confirmText = prompt("Type DELETE to confirm clearing all sales and eLoading records");
+  const confirmText = prompt("Type DELETE to confirm clearing all sales, eLoading, and Ice Sales records");
   if (confirmText !== 'DELETE') return alert('Delete cancelled');
 
-  const [salesSnap, eloadSnap] = await Promise.all([
+  const [salesSnap, eloadSnap, iceSnap] = await Promise.all([
     getDocs(collection(db, 'sales')),
     getDocs(collection(db, 'eloading')),
+    getDocs(collection(db, 'icesales')),
   ]);
 
   const deletions = [
     ...salesSnap.docs.map(s => deleteDoc(doc(db, 'sales', s.id))),
     ...eloadSnap.docs.map(s => deleteDoc(doc(db, 'eloading', s.id))),
+    ...iceSnap.docs.map(s => deleteDoc(doc(db, 'icesales', s.id))),
   ];
   await Promise.all(deletions);
 
-  alert('All sales and eLoading records cleared');
+  alert('All sales, eLoading, and Ice Sales records cleared');
   loadSalesSummary();
   loadSalesHistory();
-  // Reload eloading page if currently visible
+  // Reload eloading and ice pages if currently visible
   if (document.getElementById('eloadingPage')?.style.display !== 'none') loadEloadingPage();
+  if (document.getElementById('icePage')?.style.display !== 'none') loadIcePage();
 };
 
 
@@ -4748,7 +4752,7 @@ function updateNavAccess() {
   document.querySelectorAll('.sidebar-link').forEach(b => {
     const pageId = b.getAttribute('data-page');
     if (currentUserRole === 'cashier') {
-      const allowed = ['salesPage', 'receiptsPage', 'cashierPage', 'eloadingPage', 'lendingPage', 'notesPage'];
+      const allowed = ['salesPage', 'receiptsPage', 'cashierPage', 'eloadingPage', 'icePage', 'lendingPage', 'notesPage'];
       b.style.display = allowed.includes(pageId) ? '' : 'none';
     } else if (currentUserRole === 'admin') {
       const hiddenForAdmin = ['cashierPage', 'remitsPage', 'profitsPage'];
@@ -6330,6 +6334,245 @@ async function saveEloadTransaction() {
 }
 
 window.loadEloadingPage = loadEloadingPage;
+// ═══════════════════════════════════════════════════════════
+// ICE SALES PAGE
+// ═══════════════════════════════════════════════════════════
+let _iceSaving = false;
+
+function iceTodayStr() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+function _updateIceFormTotal() {
+  const price = Number(document.getElementById('ice-price')?.value || 0);
+  const qty   = Number(document.getElementById('ice-qty')?.value   || 0);
+  const totalEl = document.getElementById('ice-form-total');
+  if (totalEl) totalEl.textContent = formatCurrency(price * qty);
+}
+
+async function loadIcePage() {
+  const startInput = document.getElementById('ice-filter-start-date');
+  const endInput = document.getElementById('ice-filter-end-date');
+  if (startInput && !startInput.value) startInput.value = iceTodayStr();
+  if (endInput && !endInput.value) endInput.value = iceTodayStr();
+  if (startInput) startInput.onchange = loadIceTransactions;
+  if (endInput) endInput.onchange = loadIceTransactions;
+
+  const dailyBtn = document.getElementById('ice-daily-btn');
+  if (dailyBtn) dailyBtn.onclick = () => {
+    const d = iceTodayStr();
+    if (startInput) startInput.value = d;
+    if (endInput) endInput.value = d;
+    loadIceTransactions();
+  };
+  const weeklyBtn = document.getElementById('ice-weekly-btn');
+  if (weeklyBtn) weeklyBtn.onclick = () => {
+    const range = getWeekRangeStr();
+    if (startInput) startInput.value = range.start;
+    if (endInput) endInput.value = range.end;
+    loadIceTransactions();
+  };
+  const monthlyBtn = document.getElementById('ice-monthly-btn');
+  if (monthlyBtn) monthlyBtn.onclick = () => {
+    const range = getMonthRangeStr();
+    if (startInput) startInput.value = range.start;
+    if (endInput) endInput.value = range.end;
+    loadIceTransactions();
+  };
+
+  // Live total preview
+  document.getElementById('ice-price')?.addEventListener('input', _updateIceFormTotal);
+  document.getElementById('ice-qty')?.addEventListener('input',   _updateIceFormTotal);
+
+  const saveBtn = document.getElementById('ice-save-btn');
+  if (saveBtn) saveBtn.onclick = saveIceSale;
+
+  loadIceTransactions();
+}
+
+async function loadIceTransactions() {
+  const startInput = document.getElementById('ice-filter-start-date');
+  const endInput = document.getElementById('ice-filter-end-date');
+  const filterStart = (startInput && startInput.value) ? startInput.value : iceTodayStr();
+  const filterEnd = (endInput && endInput.value) ? endInput.value : iceTodayStr();
+  const historyEl = document.getElementById('ice-history');
+  if (historyEl) historyEl.innerHTML = '<span style="color:var(--muted)">Loading...</span>';
+
+  try {
+    const snap = await getDocs(collection(db, 'icesales'));
+    const txs = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      .filter(t => t.date >= filterStart && t.date <= filterEnd)
+      .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+    renderIceSummary(txs);
+    renderIceHistory(txs, filterStart, filterEnd);
+  } catch (err) {
+    console.error('Ice sales load failed', err);
+    if (historyEl) historyEl.innerHTML = '<span style="color:var(--danger)">Failed to load.</span>';
+  }
+}
+
+function renderIceSummary(txs) {
+  let totalIncome = 0, totalQty = 0;
+  const dailyProfit = {};
+  txs.forEach(t => {
+    totalIncome += Number(t.total || 0);
+    totalQty    += Number(t.quantity || 0);
+    // Profit = total sales (no capital stored per transaction); key by YYYY-MM-DD for stable sorting
+    const dayKey = t.date && /^\d{4}-\d{2}-\d{2}$/.test(t.date) ? t.date : null;
+    if (dayKey) {
+      if (!dailyProfit[dayKey]) dailyProfit[dayKey] = 0;
+      dailyProfit[dayKey] += Number(t.total || 0);
+    }
+  });
+  const incEl  = document.getElementById('ice-total-income');
+  const qtyEl  = document.getElementById('ice-total-qty');
+  const cntEl  = document.getElementById('ice-tx-count');
+  if (incEl)  incEl.textContent  = formatCurrency(totalIncome);
+  if (qtyEl)  qtyEl.textContent  = totalQty;
+  if (cntEl)  cntEl.textContent  = txs.length;
+
+  // Render daily profit breakdown
+  const profitListEl  = document.getElementById('ice-profits-list');
+  const profitTotalEl = document.getElementById('ice-total-profit');
+  if (profitListEl) {
+    profitListEl.innerHTML = '';
+    // Sort by YYYY-MM-DD string (lexicographic = chronological)
+    const sortedDays = Object.keys(dailyProfit).sort();
+    if (sortedDays.length === 0) {
+      profitListEl.innerHTML = '<span style="color:var(--muted);font-size:13px">No data</span>';
+    } else {
+      sortedDays.forEach(dayKey => {
+        const label = new Date(dayKey + 'T00:00:00').toDateString();
+        const div = document.createElement('div');
+        div.style.cssText = 'padding:4px 0;font-size:14px';
+        div.textContent = label + ': ' + formatCurrency(dailyProfit[dayKey]);
+        profitListEl.appendChild(div);
+      });
+    }
+  }
+  if (profitTotalEl) profitTotalEl.textContent = formatCurrency(totalIncome);
+}
+
+function renderIceHistory(txs, filterStart, filterEnd) {
+  const historyEl = document.getElementById('ice-history');
+  if (!historyEl) return;
+  if (txs.length === 0) {
+    historyEl.innerHTML = '<div style="color:var(--muted);padding:8px 0">No ice sales on ' + formatDateRangeLabel(filterStart, filterEnd) + '</div>';
+    return;
+  }
+  historyEl.innerHTML = '';
+  txs.forEach(tx => {
+    const ts = tx.createdAt ? new Date(tx.createdAt.seconds * 1000) : null;
+    const timeStr = ts ? ts.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }) : '';
+
+    const row = document.createElement('div');
+    row.className = 'ice-tx-row';
+
+    // Left: icon + info
+    var dot = document.createElement('div');
+    dot.className = 'ice-tx-dot';
+    row.appendChild(dot);
+
+    var body = document.createElement('div');
+    body.className = 'ice-tx-body';
+
+    var title = document.createElement('div');
+    title.className = 'ice-tx-title';
+    title.textContent = tx.quantity + ' bag' + (tx.quantity !== 1 ? 's' : '') + ' @ ' + formatCurrency(tx.price) + ' each';
+    body.appendChild(title);
+
+    var meta = document.createElement('div');
+    meta.className = 'ice-tx-meta';
+    var metaParts = [];
+    if (tx.cashierName) metaParts.push(tx.cashierName);
+    if (timeStr) metaParts.push(timeStr);
+    meta.textContent = metaParts.join(' · ');
+    body.appendChild(meta);
+    row.appendChild(body);
+
+    // Right: total
+    var totalSpan = document.createElement('span');
+    totalSpan.className = 'ice-tx-total';
+    totalSpan.textContent = formatCurrency(tx.total);
+    row.appendChild(totalSpan);
+
+    // Delete button
+    var delBtn = document.createElement('button');
+    delBtn.className = 'remove-btn eload-del-btn';
+    delBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+    delBtn.title = 'Delete this sale';
+    delBtn.onclick = function(e) {
+      e.stopPropagation();
+      deleteIceSale(tx.id);
+    };
+    row.appendChild(delBtn);
+
+    historyEl.appendChild(row);
+  });
+}
+
+async function saveIceSale() {
+  if (_iceSaving) return;
+  const priceEl = document.getElementById('ice-price');
+  const qtyEl   = document.getElementById('ice-qty');
+  const price = Number(priceEl?.value || 0);
+  const qty   = Number(qtyEl?.value   || 0);
+
+  if (price <= 0) { showErrorModal('Please enter a price per bag.'); return; }
+  if (qty <= 0)   { showErrorModal('Please enter a quantity.'); return; }
+
+  if (currentUserRole === 'cashier') {
+    if (!currentShift || !currentShift.id || currentShift.status !== 'open') {
+      return alert('You must start a shift before recording ice sales.');
+    }
+  }
+
+  _iceSaving = true;
+  const saveBtn = document.getElementById('ice-save-btn');
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving...'; }
+
+  try {
+    await addDoc(collection(db, 'icesales'), {
+      price: Number(price.toFixed(2)),
+      quantity: Number(qty),
+      total: Number((price * qty).toFixed(2)),
+      cashierName: currentEmployeeName || currentUsername || '',
+      shiftId: currentShift?.id || '',
+      date: iceTodayStr(),
+      createdAt: serverTimestamp()
+    });
+    if (priceEl) priceEl.value = '';
+    if (qtyEl)   qtyEl.value   = '';
+    const totalEl = document.getElementById('ice-form-total');
+    if (totalEl) totalEl.textContent = 'PHP 0.00';
+    playSfx('add');
+    loadIceTransactions();
+  } catch (err) {
+    console.error('Ice sale save failed', err);
+    alert('Failed to save. Please try again.');
+  } finally {
+    _iceSaving = false;
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Record Sale'; }
+  }
+}
+
+async function deleteIceSale(id) {
+  if (!id) return;
+  if (!confirm('Delete this ice sale? This cannot be undone.')) return;
+  try {
+    await deleteDoc(doc(db, 'icesales', id));
+    playSfx('delete');
+    loadIceTransactions();
+  } catch (err) {
+    console.error('Ice sale delete failed', err);
+    alert('Failed to delete. Try again.');
+  }
+}
+
+window.loadIcePage = loadIcePage;
+
+
 // ── PWA Install Banner ──────────────────────────────────────────────────────
 (function () {
   let deferredPrompt = null;
